@@ -279,11 +279,7 @@ div.sidebarSeparator{
 }
 
 #todo{
-	/*background: url(craziness.png);*/
-	/*background: url(pattern.png);*/
-	background: url(blurry.png);
-	/*background: url(tanTile.png);*/
-	/*background: url(oliveTiles2.png);*/
+	background-color: #AAA;
 	border: 1px solid #000;
 	display:inline-block;
 	line-height: 1.2em;

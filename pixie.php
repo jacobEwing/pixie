@@ -23,8 +23,8 @@
 			};
 
 			var gridInfo = {
-				w : 29,
-				h : 29,
+				w : 20,
+				h : 20,
 				cellWidth : 0,
 				cellHeight : 0,
 				showing : true
@@ -669,13 +669,16 @@
 					case 'sample':
 						tool_sample();
 						break;
+					case 'airbrush':
+						tool_airbrush();
+						break;
 					default:
 						console.log("Unimplemented Tool: " + currentTool);
 				}
 			}
 
 			function setTool(tool){
-				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null};
+				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null, airbrush:1};
 				if(!(tool in validTools)){
 					throw 'Invalid tool "' + tool + '"';
 				}
@@ -712,6 +715,20 @@
 //						drawColour.element.addClass('selectedDrawColour');
 					}
 				}
+			}
+
+			function tool_airbrush(){
+				var colour;
+				if(mouse.state.current == 1){
+					colour = drawColour;
+				}else if(mouse.state.current == 3){
+					colour = eraseColour;
+				}else{
+					return;
+				}
+				state.capture();
+
+				applyAirbrush(mouse.gridPosition.x, mouse.gridPosition.y, colour);
 			}
 
 			function tool_pencil(){
@@ -793,6 +810,47 @@
 					
 					frames[activeFrame].cells[x][y].setHighlight(colour);
 					frames[activeFrame].cells[x][y].refresh();
+				}
+			}
+
+			function applyAirbrush(px, py, colour){
+				if(currentBrush == null){
+					return;
+				}
+				if(typeof(colour) == 'string'){
+					colour = stringToRGBA(colour);
+				}
+				var x, y;
+				var w = brushes[currentBrush].width;
+				var h = brushes[currentBrush].height;
+				var xOffset = w >> 1;
+				var yOffset = h >> 1;
+				var ratio = 0.05;
+				var mixColour;
+				for(x = 0; x < w; x++){
+					for(y = 0; y < w; y++){
+						if(brushes[currentBrush].val(x, y)){
+
+							sampleColour = getPixel(px + x - xOffset, py - yOffset + y, 'object');
+							if(!sampleColour){
+								mixColour = {
+									red: Math.round(ratio * colour.rgba.red),
+									green: Math.round(ratio * colour.rgba.green),
+									blue: Math.round(ratio * colour.rgba.blue),
+									alpha: Math.round(ratio * colour.rgba.alpha)
+								};
+							}else{
+								mixColour = {
+									red : Math.round((1 - ratio) * sampleColour.red + ratio * colour.rgba.red),
+									green : Math.round((1 - ratio) * sampleColour.green + ratio * colour.rgba.green),
+									blue : Math.round((1 - ratio) * sampleColour.blue + ratio * colour.rgba.blue),
+									alpha : sampleColour.alpha + colour.rgba.alpha * ratio
+								};
+								if(mixColour.alpha > 1) mixColour.alpha = 1;
+							}
+							putPixel(px + x - xOffset, py + y - yOffset,mixColour);
+						}
+					}
 				}
 			}
 
@@ -1343,6 +1401,7 @@
 						<a title="Paint" id="tool_paintbrush" onclick="setTool('paintbrush'); return false;" href="#"><img src="images/paint.png"/></a>
 						<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
 						<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
+						<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
 
 						<div class="sidebarSeparator"></div>
 
