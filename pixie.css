@@ -1,0 +1,298 @@
+body{
+	text-align: center;
+	font-family: 'Harmattan', sans-serif;
+	/*background: url(craziness.png);*/
+	/*background: url(pattern.png);*/
+	/*background: url(blurry.png);*/
+	/*background: url(tanTile.png);*/
+	/*background: url(oliveTiles2.png);*/
+	/*background: url('crazy.png');*/
+	/*background: url('woven.png');*/
+	background: url(pattern2.png);
+}
+
+a {
+	color: #000;
+}
+
+i.fa{
+	padding-right: 0.2em;
+	font-size: 0.9em;
+}
+
+#appWrapper{
+	display: inline-block;
+	margin: auto;
+	text-align: left;
+	border-radius: 1em;
+	box-shadow:-.1em -.1em .1em .1em rgba(0,0,0,0.5) inset, .1em .1em .1em .1em rgba(255,255,255,0.5) inset;
+	padding: 2em;
+	background-color: #EEE8E0;
+}
+#editgrid{
+	display: inline-block;
+	line-height: 0;
+	border-color: #000;
+	border-style: solid;
+	border-width: 1px 0 0 1px;
+	vertical-align: top;
+	background : #FFF;
+	cursor: pointer;
+	background: repeating-linear-gradient(
+		45deg,
+		#CCC,
+		#CCC 3px,
+		#CCC 6px,
+		#AAA 12px
+	);
+}
+#paletteWrapper{
+	display : inline-block;
+	vertical-align: top;
+	position: relative;
+	border: 1px solid #000;
+}
+#palette{
+	position: relative;
+	display : inline-block;
+	vertical-align: top;
+	line-height : 1em;
+	z-index: 50;
+	background: repeating-linear-gradient(
+		125deg,
+		#EEE,
+		#CCC 10px,
+		#CCC 15px,
+		#AAA 20px
+	);
+	overflow-y : scroll;
+	overflow-x : hidden;
+	min-width: 8em;
+}
+#paletteTopSpacing{
+	height: 2em;
+}
+
+#colourToolBoxWrapper{
+	width : 100%;
+	height: 1px;
+	z-index: 100;
+	position: absolute;
+	top: 0px;
+	left: 0px;
+}
+#colourToolBox{
+	z-index: 100;
+	height: 1em;
+	background: #CCC;
+	width : 100%;
+	text-align: left;
+	font-size: 2em;
+	line-height: 1em;
+	overflow: hidden;
+}
+
+#topToolBar{
+	color: #000;
+	margin: 0 0 0.2em 0;
+	padding: 0;
+	width: 100%;
+	text-align:right;
+	display: block;
+}
+
+#leftToolBar{
+	display:inline-block;
+}
+
+div.editcell{
+	display : inline-block;
+	border-color: #000;
+	border-style: solid;
+	border-width: 0 1px 1px 0;
+	margin: 0;
+}
+div.colourButton{
+	display : block;
+	width : 8em;
+	height : 1.4em;
+	line-height: 1.5em;
+	border : 1px solid #000;
+	margin : 0;
+	cursor: pointer;
+	cursor: hand;
+	font-size: 1em;
+	text-align:right;
+}
+div.colourButton:hover{
+	border: none;
+	padding: 1px;
+}
+
+.colourActionButton{
+	cursor: default;
+	display: inline-block;
+	height: 100%;
+	margin: 0 0.2em;
+}
+
+.colourActionButton:hover{
+	font-weight: bold;
+	transform: rotate(5deg);
+	-ms-transform: rotate(5deg);
+	-webkit-transform: rotate(5deg);
+}
+
+div.selectedDrawColour{
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.5) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.8) inset;	
+}
+
+div.selectedEraseColour{
+	box-shadow:-1px -1px 1px 1px rgba(255, 255, 255,0.5) inset, 1px 1px 1px 1px rgba(0,0,0, 0.8) inset;	
+}
+
+div.button{
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.2) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.2) inset;	
+}
+
+a.uiButton{
+	display: inline;
+	border-radius: 0.2em;
+	padding: 0 1em;
+	text-decoration: none;
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.5) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.8) inset;
+	border: none;
+}
+.brushButton{
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.5) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.8) inset;
+	margin: 0.1em;
+}
+.brushButton.activeTool{
+	background-color: #FEE;
+	box-shadow:none;
+}
+
+a.uiButton:active{
+	box-shadow:none;
+	box-shadow:-1px -1px 1px 1px rgba(255,255,255,0.5) inset, 1px 1px 1px 1px rgba(0,0,0, 0.8) inset;
+}
+
+#debug{
+	background: #000;
+	color : #0A0;
+	font-weight: bold;
+	text-transform: uppercase;
+	font-family: monospace;
+	display: inline-block;
+	width: 40em;
+	max-height: 6em;
+	overflow: auto;
+}
+
+#footer{
+	margin-top: 0.2em;
+	display: inline-block;
+	text-align:right;
+	width: 100%;
+}
+/*
+#saveWrapper{
+	float: right;
+}
+*/
+.toolbar {
+	width: min-content;
+	display: flex;
+	flex-warp: wrap;
+	min-width: 100px;
+}
+
+.paletteButton{
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	text-align: center;
+	line-height: 24px;
+	border-radius: 0.2em;
+	padding: 3px;
+	border: 1px solid #AAA;
+}
+
+.toolbar a{
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	text-align: center;
+	line-height: 24px;
+	border-radius: 0.2em;
+	padding: 3px;
+	border: 1px solid #AAA;
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.5) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+
+.toolbar .paletteButton:hover{
+	box-shadow:-1px -1px 1px 1px rgba(0,0,0,0.5) inset, 1px 1px 1px 1px rgba(255, 255, 255, 0.8) inset;
+	border: none;
+	margin: 1px;
+}
+
+.toolbar a.currentTool, a.activeSymmetry{
+	box-shadow: none;
+}
+
+.toolbar a:active{
+	box-shadow: none;
+}
+
+
+
+
+#canvasHolder {
+/*	background-color: #a0a0a0;*/
+	text-align: center;
+}
+
+div.sidebarSeparator{
+	height: 0.1em;
+	border-top: 1px dotted #777470;
+	margin-bottom: 0.2em;
+}
+
+#canvasHolder canvas{
+	border: 1px solid #666;
+	background: repeating-linear-gradient(
+		45deg,
+		#CCC,
+		#CCC 2px,
+		#CCC 4px,
+		#AAA 6px
+	);
+	display: inline-block;
+	vertical-align: center;
+}
+
+#symmetryButtons{
+	display: inline-block;
+	text-align:right;
+	margin-left: 2em;
+}
+
+#todo{
+	/*background: url(craziness.png);*/
+	/*background: url(pattern.png);*/
+	background: url(blurry.png);
+	/*background: url(tanTile.png);*/
+	/*background: url(oliveTiles2.png);*/
+	border: 1px solid #000;
+	display:inline-block;
+	line-height: 1.2em;
+	border-radius: 0.5em;
+	padding: 0.5em;
+
+}
+
+#filenameWrapper{
+	display:inline-block;
+	padding: 0 .5em;
+}
