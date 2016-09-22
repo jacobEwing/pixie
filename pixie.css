@@ -239,6 +239,7 @@ a.uiButton:active{
 
 .toolbar a.currentTool, a.activeSymmetry{
 	box-shadow: none;
+	background-color: #FEE;
 }
 
 .toolbar a:active{
