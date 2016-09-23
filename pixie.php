@@ -624,6 +624,10 @@
 
 			function rgbaToString(rgba){
 				//debugger;
+				var alpha = 1 * rgba.alpha;
+				if(alpha != rgba.alpha){
+					debugger;
+				}
 				return 'rgba(' + rgba.red + ', ' + rgba.green + ', ' + rgba.blue + ', ' + rgba.alpha + ')';
 			}
 
@@ -798,7 +802,7 @@
 					rval = frames[activeFrame].cells[x][y].colour;
 				}
 
-				if(resultType == 'string' && rval != null){
+				if(resultType == 'string' && rval != null && rval != false){
 					rval = rgbaToString(rval);
 				}
 				return rval;
@@ -827,27 +831,27 @@
 				var yOffset = h >> 1;
 				var ratio = 0.05;
 				var mixColour;
+				if(colour == null) colour = {rgba : {red : 0, green : 0, blue : 0, alpha : 0}};
 				for(x = 0; x < w; x++){
 					for(y = 0; y < w; y++){
 						if(brushes[currentBrush].val(x, y)){
 
 							sampleColour = getPixel(px + x - xOffset, py - yOffset + y, 'object');
 							if(!sampleColour){
-								mixColour = {
-									red: Math.round(ratio * colour.rgba.red),
-									green: Math.round(ratio * colour.rgba.green),
-									blue: Math.round(ratio * colour.rgba.blue),
-									alpha: Math.round(ratio * colour.rgba.alpha)
+								sampleColour = {
+									red : colour.rgba.red,
+									green : colour.rgba.green,
+									blue : colour.rgba.blue,
+									alpha : 0
 								};
-							}else{
-								mixColour = {
-									red : Math.round((1 - ratio) * sampleColour.red + ratio * colour.rgba.red),
-									green : Math.round((1 - ratio) * sampleColour.green + ratio * colour.rgba.green),
-									blue : Math.round((1 - ratio) * sampleColour.blue + ratio * colour.rgba.blue),
-									alpha : sampleColour.alpha + colour.rgba.alpha * ratio
-								};
-								if(mixColour.alpha > 1) mixColour.alpha = 1;
 							}
+							mixColour = {
+								red : Math.round((1 - ratio) * sampleColour.red + ratio * colour.rgba.red),
+								green : Math.round((1 - ratio) * sampleColour.green + ratio * colour.rgba.green),
+								blue : Math.round((1 - ratio) * sampleColour.blue + ratio * colour.rgba.blue),
+								alpha : sampleColour.alpha + colour.rgba.alpha * ratio
+							};
+							if(mixColour.alpha > 1) mixColour.alpha = 1;
 							putPixel(px + x - xOffset, py + y - yOffset,mixColour);
 						}
 					}
@@ -1242,7 +1246,7 @@
 									colourTally.red += p[0] * matrix.val(dx, dy);
 									colourTally.green += p[1] * matrix.val(dx, dy);
 									colourTally.blue += p[2] * matrix.val(dx, dy);
-									colourTally.alpha += p[3] * matrix.val(dx, dy);
+									colourTally.alpha += 1 * p[3] * matrix.val(dx, dy);
 								}
 							}
 							colourTally.alpha = Math.min(1, Math.max(0, parseFloat(colourTally.alpha).toFixed(3)));
