@@ -623,11 +623,7 @@
 			};
 
 			function rgbaToString(rgba){
-				//debugger;
 				var alpha = 1 * rgba.alpha;
-				if(alpha != rgba.alpha){
-					debugger;
-				}
 				return 'rgba(' + rgba.red + ', ' + rgba.green + ', ' + rgba.blue + ', ' + rgba.alpha + ')';
 			}
 
@@ -676,13 +672,15 @@
 					case 'airbrush':
 						tool_airbrush();
 						break;
+					case 'line':
+						tool_line();
 					default:
 						console.log("Unimplemented Tool: " + currentTool);
 				}
 			}
 
 			function setTool(tool){
-				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null, airbrush:1};
+				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null, airbrush:null, line :null};
 				if(!(tool in validTools)){
 					throw 'Invalid tool "' + tool + '"';
 				}
@@ -716,10 +714,15 @@
 							drawColour.element.removeClass('selectedDrawColour');
 						}
 						drawColour = sampleColour;
-//						drawColour.element.addClass('selectedDrawColour');
 					}
 				}
 			}
+
+			var tool_line = (function(){
+				return function(){
+
+				};
+			})();
 
 			function tool_airbrush(){
 				var colour;
@@ -730,7 +733,9 @@
 				}else{
 					return;
 				}
-				state.capture();
+				if(mouse.state.current != 0 && mouse.state.current != mouse.state.last){
+					state.capture();
+				}
 
 				applyAirbrush(mouse.gridPosition.x, mouse.gridPosition.y, colour);
 			}
@@ -804,6 +809,7 @@
 
 				if(resultType == 'string' && rval != null && rval != false){
 					rval = rgbaToString(rval);
+					var test = stringToRGBA(rval);
 				}
 				return rval;
 			}
@@ -849,7 +855,7 @@
 								red : Math.round((1 - ratio) * sampleColour.red + ratio * colour.rgba.red),
 								green : Math.round((1 - ratio) * sampleColour.green + ratio * colour.rgba.green),
 								blue : Math.round((1 - ratio) * sampleColour.blue + ratio * colour.rgba.blue),
-								alpha : sampleColour.alpha + colour.rgba.alpha * ratio
+								alpha : 1 * sampleColour.alpha + colour.rgba.alpha * ratio
 							};
 							if(mixColour.alpha > 1) mixColour.alpha = 1;
 							putPixel(px + x - xOffset, py + y - yOffset,mixColour);
@@ -880,24 +886,38 @@
 
 			function putPixel(x, y, colour){
 				var symx, symy;
+
+				var _doPixel = function(x, y, colour){
+					switch(colour){
+						case "active":
+							frames[activeFrame].cells[x][y].element.addClass('activeCell');
+							break;
+						case "highlight":
+							frames[activeFrame].cells[x][y].element.addClass('highlightedCell');
+							break;
+						default:
+							frames[activeFrame].cells[x][y].setColour(colour);
+							frames[activeFrame].cells[x][y].refresh();
+							break;
+					}
+				};
+
 				if(x >= 0 && y >= 0 && x < gridInfo.w && y < gridInfo.h){
 					if(colour == undefined) colour = null;
-					
-					frames[activeFrame].cells[x][y].setColour(colour);
-					frames[activeFrame].cells[x][y].refresh();
+					_doPixel(x, y, colour);
 					switch(symmetry){
 						case 'vertical':
 							symx = gridInfo.w - 1 - x;
 							symy = y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case 'horizontal':
 							symx = x;
 							symy = gridInfo.h - 1 - y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case 'diagonal1':
@@ -906,7 +926,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case 'diagonal2':
@@ -915,14 +935,14 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case 'rotational2':
 							symx = gridInfo.w - 1 - x;
 							symy = gridInfo.h - 1 - y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case 'rotational4':
@@ -931,7 +951,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = y;
@@ -939,7 +959,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = gridInfo.w - 1 - y;
@@ -947,20 +967,20 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 						case '4way':
 							symx = gridInfo.w - 1 - x;
 							symy = y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = x;
 							symy = gridInfo.h - 1 - y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = gridInfo.w - 1 - x;
@@ -968,7 +988,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 							break;
 
@@ -976,13 +996,13 @@
 							symx = gridInfo.w - 1 - x;
 							symy = y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = x;
 							symy = gridInfo.h - 1 - y;
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = y;
@@ -990,7 +1010,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symx = gridInfo.w - 1 - x;
@@ -998,7 +1018,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 
@@ -1007,7 +1027,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symy = x;
@@ -1015,7 +1035,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 							symy = gridInfo.h - 1 - x;
@@ -1023,7 +1043,7 @@
 							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
 							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
 							if(symx != x || symy != y){
-								frames[activeFrame].cells[symx][symy].setColour(colour);
+								_doPixel(symx, symy, colour);
 							}
 
 
@@ -1358,6 +1378,15 @@
 				$('#editgrid').mousemove(function(evt){
 					if(mouse.state.current) handleMouseAction(evt);
 					mouse.state.last = mouse.state.current;
+
+					var gridPos = $('#editgrid').position();
+					var x = Math.floor((evt.pageX - gridPos.left) / gridInfo.cellWidth);
+					var y = Math.floor((evt.pageY - gridPos.top) / gridInfo.cellHeight);
+					$('.activeCell').removeClass('activeCell');
+					if(x > 0 && x < gridInfo.w && y > 0 && y < gridInfo.h){
+						applyBrush(x, y, 'active');
+					}
+
 					return false;
 				});
 
@@ -1406,6 +1435,7 @@
 						<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
 						<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
 						<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
+						<a title="line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
 
 						<div class="sidebarSeparator"></div>
 
@@ -1466,7 +1496,7 @@
 			TODO:
 			<ul>
 				<li>custom gradient generating</li>
-				<li>airbrush, circle and rectangle tools</li>
+				<li>circle and rectangle tools</li>
 				<li>frames</li>
 				<li>add mouse-controlled matrix application (e.g. "smudge")</li>
 				<li>add keyboard shortcuts</li>

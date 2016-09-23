@@ -293,3 +293,11 @@ div.sidebarSeparator{
 	display:inline-block;
 	padding: 0 .5em;
 }
+
+.activeCell{
+	box-shadow:-2em -2em 2em 2em rgba(255, 250, 240,0.6) inset !important;
+}
+
+.highlightedCell{
+	box-shadow:-2em -2em 2em 2em rgba(160, 255, 255,0.4) inset !important;
+}
