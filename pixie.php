@@ -7,6 +7,7 @@
 		<link rel="stylesheet" href="pixie.css"/>
 		<script type="text/javascript" src="jquery.min.js"></script>
 		<script type="text/javascript" src='matrices.js'></script>
+		<script type="text/javascript" src='geometry.js'></script>
 		<script type="text/javascript" src='spectrum/spectrum.js'></script>
 		<script type="text/javascript" src="FileSaver/FileSaver.min.js"></script>
 		<script type="text/javascript">
@@ -675,13 +676,16 @@
 					case 'line':
 						tool_line();
 						break;
+					case 'circle':
+						tool_circle();
+						break;
 					default:
 						console.log("Unimplemented Tool: " + currentTool);
 				}
 			}
 
 			function setTool(tool){
-				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null, airbrush:null, line :null};
+				var validTools = {pencil:null, paintbrush:null, floodfill:null, sample:null, airbrush:null, line :null, circle:null};
 				if(!(tool in validTools)){
 					throw 'Invalid tool "' + tool + '"';
 				}
@@ -729,6 +733,7 @@
 					if(mouse.state.current == 0){
 						if(mouse.state.last != mouse.state.current){
 							remove_highlights();
+							state.capture();
 							if(mouse.state.last == 1){
 								line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, drawColour);
 							}else if(mouse.state.last == 3){
@@ -742,7 +747,6 @@
 
 					if(mouse.state.last != mouse.state.current){
 						if(mouse.state.last == 0){
-							console.log('setting it');
 							startPosition.x = mouse.gridPosition.x;
 							startPosition.y = mouse.gridPosition.y;
 						}
@@ -750,6 +754,36 @@
 					remove_highlights();
 					line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, 'highlight');
 
+				};
+			})();
+
+			var tool_circle = (function(){
+				var startPosition = {x : 0, y : 0};
+				return function(){
+					if(mouse.state.current == 0){
+						if(mouse.state.last != mouse.state.current){
+							remove_highlights();
+							state.capture();
+							if(mouse.state.last == 1){
+								circle(startPosition.x, startPosition.y, Math.floor(distance(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y)), drawColour, 'hollow');
+							}else if(mouse.state.last == 3){
+								circle(startPosition.x, startPosition.y, Math.floor(distance(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y)), eraseColour, 'hollow');
+							}else{
+								throw "tool_circle: Invalid mouse state";
+							}
+						}
+						return;
+					}
+
+					if(mouse.state.last != mouse.state.current){
+						if(mouse.state.last == 0){
+							console.log('setting it');
+							startPosition.x = mouse.gridPosition.x;
+							startPosition.y = mouse.gridPosition.y;
+						}
+					}
+					remove_highlights();
+					circle(startPosition.x, startPosition.y, Math.floor(distance(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y)), 'highlight', 'hollow');
 				};
 			})();
 
@@ -917,17 +951,22 @@
 				var symx, symy;
 
 				var _doPixel = function(x, y, colour){
-					switch(colour){
-						case "active":
-							frames[activeFrame].cells[x][y].element.addClass('activeCell');
-							break;
-						case "highlight":
-							frames[activeFrame].cells[x][y].element.addClass('highlightedCell');
-							break;
-						default:
-							frames[activeFrame].cells[x][y].setColour(colour);
-							frames[activeFrame].cells[x][y].refresh();
-							break;
+					try{
+						switch(colour){
+							case "active":
+								frames[activeFrame].cells[x][y].element.addClass('activeCell');
+								break;
+							case "highlight":
+								frames[activeFrame].cells[x][y].element.addClass('highlightedCell');
+								break;
+							default:
+								frames[activeFrame].cells[x][y].setColour(colour);
+								frames[activeFrame].cells[x][y].refresh();
+								break;
+						}
+					}catch(e){
+						console.log(e);
+						debugger;
 					}
 				};
 
@@ -1081,6 +1120,77 @@
 				}
 			}
 
+			function circle(cx, cy, radius, colour, mode){
+				var ydist, ydist2, xdist, x, y, dx2, x1;
+				if(radius < 1) radius *= -1;
+				if(!radius) radius++;
+				x1 = cx - radius;
+				if(mode == 'hollow'){
+					for(x = x1; x <= cx; x += 1){
+						xdist = Math.abs(x - cx);
+						ydist = Math.sqrt(radius * radius - xdist * xdist);
+						ydist2 = Math.sqrt(radius * radius - (xdist - 1) * (xdist - 1));
+						ydist2 += !xdist;
+
+						if(Math.abs(ydist2 - ydist) > 1){
+							for(y = Math.round(ydist); y < Math.round(ydist2); y++){
+								putPixel(x, cy + y, colour);
+								putPixel(x, cy - y, colour);
+								dx2 = cx + xdist;
+								putPixel(dx2, cy + y, colour);
+								putPixel(dx2, cy - y, colour);
+							}
+						}else{  
+							dx2 = cx + xdist;
+
+							y = Math.round(cy + ydist);
+							putPixel(x, y, colour);
+							putPixel(dx2, y, colour);
+
+							y = Math.round(cy - ydist);
+							putPixel(x, y, colour);
+							putPixel(dx2, y, colour);
+						}
+					}
+				}else{
+					for(x = x1; x <= cx; x += 1){
+						xdist = Math.abs(x - cx);
+						ydist = Math.sqrt(radius * radius - xdist * xdist);
+						ydist2 = Math.sqrt(radius * radius - (xdist - 1) * (xdist - 1));
+						ydist2 += !xdist;
+
+						if(Math.abs(ydist2 - ydist) > 1){
+							for(y = Math.round(ydist); y < Math.round(ydist2); y++){
+								box(x, cy - y, x, cy + y, colour);
+								dx2 = cx + xdist;
+								box(dx2, cy - y, dx2, cy + y, colour);
+							}
+						
+						}else{  
+							dx2 = cx + xdist;
+							box(x, Math.round(cy + ydist), x, Math.round(cy - ydist), colour);
+							box(dx2, Math.round(cy + ydist), dx2, Math.round(cy - ydist), colour);
+
+						}
+					}
+				}
+			}
+
+			function box(x1, y1, x2, y2, colour){
+				var x, y, n;
+				if(x1 > x2){
+					n = x1; x1 = x2; x2 = n;
+				}
+				if(y1 > y2){
+					n = y1; y1 = y2; y2 = n;
+				}
+				for(x = x1; x <= x2; x++){
+					for(y = y1; y <= y2; y++){
+						putPixel(x, y, colour);
+					}
+				}
+			}
+
 			function line(x1, y1, x2, y2, colour){
 				var x, y, dx, dy, xsgn, ysgn, absdx, absdy;
 				var tally = 0;
@@ -1096,10 +1206,17 @@
 
 				applyBrush(x1, y1, colour);
 				applyBrush(x2, y2, colour);
+				slope = absdy / absdx;
+				if(slope > .8 && slope < 1.5){
+					tallyMultiple = 1;
+				}else{
+					tallyMultiple = 2;
+				}
+
 				if(Math.abs(dy) > Math.abs(dx)){
 					for(y = y1; y != y2; y += ysgn){
 						tally += absdx;
-						if(tally > absdy){
+						if(tally * tallyMultiple > absdy){
 							tally -= absdy;
 							x += xsgn;
 						}
@@ -1108,7 +1225,7 @@
 				}else{
 					for(x = x1; x != x2; x += xsgn){
 						tally += absdy;
-						if(tally > absdx){
+						if(tally * tallyMultiple > absdx){
 							tally -= absdx;
 							y += ysgn;
 						}
@@ -1464,7 +1581,8 @@
 						<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
 						<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
 						<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
-						<a title="line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
+						<a title="Line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
+						<a title="Circle" id="tool_circle" onclick="setTool('circle'); return false;" href="#"><img src="images/circle.png"/></a>
 
 						<div class="sidebarSeparator"></div>
 

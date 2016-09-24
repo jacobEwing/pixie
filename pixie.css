@@ -1,13 +1,6 @@
 body{
 	text-align: center;
 	font-family: 'Harmattan', sans-serif;
-	/*background: url(craziness.png);*/
-	/*background: url(pattern.png);*/
-	/*background: url(blurry.png);*/
-	/*background: url(tanTile.png);*/
-	/*background: url(oliveTiles2.png);*/
-	/*background: url('crazy.png');*/
-	/*background: url('woven.png');*/
 	background: url(images/pattern2.png);
 }
 
@@ -299,5 +292,5 @@ div.sidebarSeparator{
 }
 
 .highlightedCell{
-	box-shadow:-2em -2em 2em 2em rgba(160, 255, 255,0.4) inset !important;
+	box-shadow:-2em -2em 2em 2em rgba(128, 128, 120,0.4) inset !important;
 }
