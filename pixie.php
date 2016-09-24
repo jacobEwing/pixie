@@ -674,6 +674,7 @@
 						break;
 					case 'line':
 						tool_line();
+						break;
 					default:
 						console.log("Unimplemented Tool: " + currentTool);
 				}
@@ -692,6 +693,10 @@
 				currentTool = tool;
 				$('#tool_' + currentTool).addClass('currentTool');
 
+			}
+
+			function remove_highlights(){
+				$('.highlightedCell').removeClass('highlightedCell');
 			}
 
 			function tool_sample(){
@@ -719,7 +724,31 @@
 			}
 
 			var tool_line = (function(){
+				var startPosition = {x : 0, y : 0};
 				return function(){
+					if(mouse.state.current == 0){
+						if(mouse.state.last != mouse.state.current){
+							remove_highlights();
+							if(mouse.state.last == 1){
+								line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, drawColour);
+							}else if(mouse.state.last == 3){
+								line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, eraseColour);
+							}else{
+								throw "tool_line: Invalid mouse state";
+							}
+						}
+						return;
+					}
+
+					if(mouse.state.last != mouse.state.current){
+						if(mouse.state.last == 0){
+							console.log('setting it');
+							startPosition.x = mouse.gridPosition.x;
+							startPosition.y = mouse.gridPosition.y;
+						}
+					}
+					remove_highlights();
+					line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, 'highlight');
 
 				};
 			})();
