@@ -20,17 +20,27 @@
 			var optimalScale = {
 				width : 500,
 				height : 500,
-				minCellSize : 5
+				minCellSize : 2
+			};
+
+			var _doPixel;
+			var drawFunction = function(x, y, colour){
+				_doPixel(x, y, colour);
 			};
 
 			var gridInfo = {
-				w : 20,
-				h : 20,
+				w : 48,
+				h : 64,
 				cellWidth : 0,
 				cellHeight : 0,
-				showing : true
+				showing : false
 			};
 
+			var mouse = {
+				state : {current : 0, last : 0},
+				gridPosition : { x : null, y : null},
+				lastPosition : { x : null, y : null}
+			};
 
 			var brushes = [
 				new matrixClass([[1]]),
@@ -53,36 +63,26 @@
 						[ 0, 1, 1, 1, 0]
 					]),
 				new matrixClass([
+						[ 1, 1],
+						[ 1, 1]
+					]),
+				new matrixClass([
+						[1, 1, 1], 
+						[1, 1, 1], 
+						[1, 1, 1]
+					]),
+				new matrixClass([
+						[ 1, 1, 1, 1],
+						[ 1, 1, 1, 1],
+						[ 1, 1, 1, 1],
+						[ 1, 1, 1, 1]
+					]),
+				new matrixClass([
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1]
-					]),
-				new matrixClass([
-						[ 1, 0, 1, 0, 1],
-						[ 0, 0, 0, 0, 0],
-						[ 1, 0, 1, 0, 1],
-						[ 0, 0, 0, 0, 0],
-						[ 1, 0, 1, 0, 1]
-					]),
-				new matrixClass([
-						[1, 0, 0, 0, 0, 0, 0],
-						[0, 0, 0, 0, 0, 0, 0],
-						[0, 0, 1, 0, 0, 0, 0],
-						[0, 0, 0, 0, 0, 0, 0],
-						[0, 0, 0, 0, 1, 0, 0],
-						[0, 0, 0, 0, 0, 0, 0],
-						[0, 0, 0, 0, 0, 0, 1]
-					]),
-				new matrixClass([
-						[0, 0, 0, 0, 0, 0, 1],
-						[0, 0, 0, 0, 0, 0, 0],
-						[0, 0, 0, 0, 1, 0, 0],
-						[0, 0, 0, 0, 0, 0, 0],
-						[0, 0, 1, 0, 0, 0, 0],
-						[0, 0, 0, 0, 0, 0, 0],
-						[1, 0, 0, 0, 0, 0, 0]
 					])
 			];
 			var currentBrush = 0
@@ -322,6 +322,15 @@
 				}
 			};
 
+			frameClass.prototype.reindexCells = function(){
+				var x, y;
+				for(x = 0; x < gridInfo.w; x++){
+					for(y = 0; y < gridInfo.h; y++){
+						this.cells[x][y].position = {'x' : x, 'y' : y};
+					}
+				}
+			};
+
 			function renderGrid(){
 				$('#editgrid').empty();
 				$('#editgrid').width(gridInfo.w  * gridInfo.cellWidth);
@@ -338,13 +347,8 @@
 						frames[activeFrame].cells[x][y].draw($('#editgrid'));
 					}
 				}
+				refreshGrid();
 			}
-
-			var mouse = {
-				state : {current : 0, last : 0},
-				gridPosition : { x : null, y : null},
-				lastPosition : { x : null, y : null}
-			};
 
 
 			/******* the cell class ********/
@@ -491,23 +495,6 @@
 						}
 						drawColour = me;
 						drawColour.element.addClass('selectedDrawColour');
-
-						for(n = 0; n < frames.length; n++){
-							for(x = 0; x < frames[n].cells.length; x++){
-								for(y = 0; y < frames[n].cells[x].length; y++){
-									if(
-										frames[n].cells[x][y].colour != null &&
-										frames[n].cells[x][y].colour['red'] == oldRGBA.red &&
-										frames[n].cells[x][y].colour['green'] == oldRGBA.green &&
-										frames[n].cells[x][y].colour['blue'] == oldRGBA.blue &&
-										frames[n].cells[x][y].colour['alpha'] == oldRGBA.alpha
-									){
-										frames[n].cells[x][y].setColour(me.rgba);
-										frames[n].cells[x][y].refresh();
-									}
-								}
-							}
-						}
 					}
 				});
 				// add the copy button
@@ -918,7 +905,7 @@
 								red : Math.round((1 - ratio) * sampleColour.red + ratio * colour.rgba.red),
 								green : Math.round((1 - ratio) * sampleColour.green + ratio * colour.rgba.green),
 								blue : Math.round((1 - ratio) * sampleColour.blue + ratio * colour.rgba.blue),
-								alpha : 1 * sampleColour.alpha + colour.rgba.alpha * ratio
+								alpha : (1 - ratio) * sampleColour.alpha + colour.rgba.alpha * ratio
 							};
 							if(mixColour.alpha > 1) mixColour.alpha = 1;
 							putPixel(px + x - xOffset, py + y - yOffset,mixColour);
@@ -950,173 +937,30 @@
 			function putPixel(x, y, colour){
 				var symx, symy;
 
-				var _doPixel = function(x, y, colour){
-					try{
-						switch(colour){
-							case "active":
-								frames[activeFrame].cells[x][y].element.addClass('activeCell');
-								break;
-							case "highlight":
-								frames[activeFrame].cells[x][y].element.addClass('highlightedCell');
-								break;
-							default:
-								frames[activeFrame].cells[x][y].setColour(colour);
-								frames[activeFrame].cells[x][y].refresh();
-								break;
-						}
-					}catch(e){
-						console.log(e);
-						debugger;
-					}
-				};
+
+				switch(colour){
+					case "active":
+						_doPixel = function(x, y, colour){
+							frames[activeFrame].cells[x][y].element.addClass('activeCell');
+						};
+						break;
+					case "highlight":
+						_doPixel = function(x, y, colour){
+							frames[activeFrame].cells[x][y].element.addClass('highlightedCell');
+						};
+						break;
+					default:
+						_doPixel = function(x, y, colour){
+							frames[activeFrame].cells[x][y].setColour(colour);
+							frames[activeFrame].cells[x][y].refresh();
+						};
+						break;
+				}
+
 
 				if(x >= 0 && y >= 0 && x < gridInfo.w && y < gridInfo.h){
 					if(colour == undefined) colour = null;
-					_doPixel(x, y, colour);
-					switch(symmetry){
-						case 'vertical':
-							symx = gridInfo.w - 1 - x;
-							symy = y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case 'horizontal':
-							symx = x;
-							symy = gridInfo.h - 1 - y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case 'diagonal1':
-							symx = y;
-							symy = x;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case 'diagonal2':
-							symx = gridInfo.w - 1 - y;
-							symy = gridInfo.w - 1 - x;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case 'rotational2':
-							symx = gridInfo.w - 1 - x;
-							symy = gridInfo.h - 1 - y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case 'rotational4':
-							symx = gridInfo.w - 1 - x;
-							symy = gridInfo.h - 1 - y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = y;
-							symy = gridInfo.h - 1 - x;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = gridInfo.w - 1 - y;
-							symy = x;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-						case '4way':
-							symx = gridInfo.w - 1 - x;
-							symy = y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = x;
-							symy = gridInfo.h - 1 - y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = gridInfo.w - 1 - x;
-							symy = gridInfo.h - 1 - y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-							break;
-
-						case '8way':
-							symx = gridInfo.w - 1 - x;
-							symy = y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = x;
-							symy = gridInfo.h - 1 - y;
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = y;
-							symy = x;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symx = gridInfo.w - 1 - x;
-							symy = gridInfo.h - 1 - y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-
-							symy = gridInfo.h - 1 - x;
-							symx = y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symy = x;
-							symx = gridInfo.w - 1 - y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-							symy = gridInfo.h - 1 - x;
-							symx = gridInfo.w - 1 - y;
-							symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-							symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
-							if(symx != x || symy != y){
-								_doPixel(symx, symy, colour);
-							}
-
-
-							break;
-					}
+					drawFunction(x, y, colour);
 				}
 			}
 
@@ -1134,22 +978,22 @@
 
 						if(Math.abs(ydist2 - ydist) > 1){
 							for(y = Math.round(ydist); y < Math.round(ydist2); y++){
-								putPixel(x, cy + y, colour);
-								putPixel(x, cy - y, colour);
+								applyBrush(x, cy + y, colour);
+								applyBrush(x, cy - y, colour);
 								dx2 = cx + xdist;
-								putPixel(dx2, cy + y, colour);
-								putPixel(dx2, cy - y, colour);
+								applyBrush(dx2, cy + y, colour);
+								applyBrush(dx2, cy - y, colour);
 							}
 						}else{  
 							dx2 = cx + xdist;
 
 							y = Math.round(cy + ydist);
-							putPixel(x, y, colour);
-							putPixel(dx2, y, colour);
+							applyBrush(x, y, colour);
+							applyBrush(dx2, y, colour);
 
 							y = Math.round(cy - ydist);
-							putPixel(x, y, colour);
-							putPixel(dx2, y, colour);
+							applyBrush(x, y, colour);
+							applyBrush(dx2, y, colour);
 						}
 					}
 				}else{
@@ -1302,80 +1146,175 @@
 				frames[activeFrame].download();
 			}
 
+			function shiftDown(){
+				// shift() - pulls one of the start
+				// unshift() - adds one at the start
+				// pop() - pulls one off the end
+				// push() - adds one at the end
+
+				var grid = frames[activeFrame].cells;
+				var x, cell;
+				for(x = frames[activeFrame].width - 1; x >= 0 ; x--){
+					cell = grid[x].pop();
+					grid[x].unshift(cell);
+					cell.element.detach();
+					cell.element.prependTo($('#editgrid'));
+
+				}
+
+				// now update the canvas
+				var ctx = frames[activeFrame].context;
+				var b1 = ctx.getImageData(0, 0, frames[activeFrame].width, frames[activeFrame].height - 1);
+				var b2 = ctx.getImageData(0, frames[activeFrame].height - 1, frames[activeFrame].width, 1);
+				ctx.putImageData(b1, 0, 1);
+				ctx.putImageData(b2, 0, 0);
+
+				frames[activeFrame].reindexCells();
+
+			}
+
+			function shiftUp(){
+
+				var grid = frames[activeFrame].cells;
+				var x, cell;
+				holder = [];
+				for(x = 0; x < frames[activeFrame].width; x++){
+					cell = grid[x].shift();
+					grid[x].push(cell);
+					cell.element.detach();
+					holder[x] = cell.element;
+
+				}
+				for(x in holder){
+					holder[x].appendTo($('#editgrid'));
+				}
+
+				// now update the canvas
+				var ctx = frames[activeFrame].context;
+				var b1 = ctx.getImageData(0, 1, frames[activeFrame].width, frames[activeFrame].height - 1);
+				var b2 = ctx.getImageData(0, 0, frames[activeFrame].width, 1);
+				ctx.putImageData(b1, 0, 0);
+				ctx.putImageData(b2, 0, frames[activeFrame].height - 1);
+
+				frames[activeFrame].reindexCells();
+
+			}
+
+			function shiftLeft(){
+				// foo.unshift(foo.pop()); //<-- shuffling rightward
+				// foo.push(foo.shift()); // <<-- shuffling leftward
+				var y;
+				var grid = frames[activeFrame].cells;
+				var col = grid.shift();
+				for(y = 0; y < frames[activeFrame].height; y++){
+					
+					col[y].element.detach();
+					col[y].element.insertAfter(grid[frames[activeFrame].width - 2][y].element); // <-- "2" because the width is down by one from the shift() call above
+				}
+				grid.push(col);
+
+				// now update the canvas
+				var ctx = frames[activeFrame].context;
+				var b1 = ctx.getImageData(1, 0, frames[activeFrame].width - 1, frames[activeFrame].height);
+				var b2 = ctx.getImageData(0, 0, 1, frames[activeFrame].height);
+				ctx.putImageData(b1, 0, 0);
+				ctx.putImageData(b2, frames[activeFrame].width - 1, 0);
+
+				frames[activeFrame].reindexCells();
+			}
+
+			function shiftRight(){
+				// foo.unshift(foo.pop()); //<-- shuffling rightward
+				// foo.push(foo.shift()); // <<-- shuffling leftward
+				var y;
+				var grid = frames[activeFrame].cells;
+				var col = grid.pop();
+				for(y = 0; y < frames[activeFrame].height; y++){
+					col[y].element.detach();
+					col[y].element.insertBefore(grid[0][y].element);
+				}
+				grid.unshift(col);
+
+				// now update the canvas
+				var ctx = frames[activeFrame].context;
+				var b1 = ctx.getImageData(0, 0, frames[activeFrame].width - 1, frames[activeFrame].height);
+				var b2 = ctx.getImageData(frames[activeFrame].width - 1, 0, 1, frames[activeFrame].height);
+				ctx.putImageData(b1, 1, 0);
+				ctx.putImageData(b2, 0, 0);
+
+				frames[activeFrame].reindexCells();
+			}
+
+
 			var transform = (function(){
 				var _active = 0;
+
 				return function(action){
 					if(_active) return;
 					_active = 1;
 					state.capture();
 					var x, y, width, height;
-					var newData = [], doRebuild = 0;
+					//var newData = [];
+					var swapCanvas = $('<canvas></canvas>')[0];
+
 
 					if({'rotright' : 1, 'rotleft' : 1, 'diagonal1':1, 'diagonal2' : 1}[action] == 1){
 						width = gridInfo.h;
 						height = gridInfo.w;
-						doRebuild = 1;
-					}else if({'vflip' : 1, 'hflip' : 1, 'shiftleft' : 1, 'shiftright' : 1, 'shiftup':1, 'shiftdown':1}[action] == 1){
+					}else if({'vflip' : 1, 'hflip' : 1}[action] == 1){
 						width = gridInfo.w;
 						height = gridInfo.h;
 					}else{
 						_active = 0;
 						return;
 					}
-					var readPixel = {
+
+					swapCanvas.width = width;
+					swapCanvas.height = height;
+					var ctx = swapCanvas.getContext('2d');
+
+					var copyPixel = {
 						'rotright': function(x, y){
-								return getPixel(y, width - x - 1);
+								ctx.fillStyle = getCanvasPixel(y, width - x - 1);
+								ctx.fillRect(x, y, 1, 1);
 							},
 						'rotleft': function(x, y){
-								return getPixel(height - y - 1, x);
+								ctx.fillStyle = getCanvasPixel(height - y - 1, x);
+								ctx.fillRect(x, y, 1, 1);
 							},
 						'diagonal1': function(x, y){
-								return getPixel(y, x);
+								ctx.fillStyle = getCanvasPixel(y, x);
+								ctx.fillRect(x, y, 1, 1);
 							},
 						'diagonal2': function(x, y){
-								return getPixel(height - y - 1, width - x - 1);
+								ctx.fillStyle = getCanvasPixel(height - y - 1, width - x - 1);
+								ctx.fillRect(x, y, 1, 1);
 							},
 						'hflip': function(x, y){
-								return getPixel(width - x - 1, y);
+								ctx.fillStyle = getCanvasPixel(width - x - 1, y);
+								ctx.fillRect(x, y, 1, 1);
 							},
 						'vflip': function(x, y){
-								return getPixel(x, height - y - 1);
-							},
-						'shiftleft': function(x, y){
-								return getPixel(x == width - 1 ? 0 : x + 1, y);
-							},
-						'shiftright': function(x, y){
-								return getPixel(x == 0 ? width - 1 : x - 1, y);
-							},
-						'shiftup': function(x, y){
-								return getPixel(x, y == height - 1 ? 0 : y + 1);
-							},
-						'shiftdown': function(x, y){
-								return getPixel(x, y == 0 ? height - 1 : y - 1);
+								ctx.fillStyle = getCanvasPixel(x, height - y - 1);
+								ctx.fillRect(x, y, 1, 1);
 							}
 					}[action];
-
+					$(swapCanvas).appendTo($('#appWrapper'));
 					for(x = 0; x < width; x++){
-						newData[x] = [];
 						for(y = 0; y < height; y++){
-							newData[x][y] = readPixel(x, y);
+							copyPixel(x, y);
 						}
 					}
 
-					gridInfo.w = width;
+					gridInfo.w = width; // <-- needed anymore?
 					gridInfo.h = height;
+					frames[activeFrame].canvas.parent().append($(swapCanvas));
+					frames[activeFrame].canvas.remove();
 
-					if(doRebuild){
-						frames[activeFrame].rebuild();
-						frames[activeFrame].resetCanvas();
-					}
-					renderGrid();
-					refreshGrid();
-					for(x = 0; x < width; x++){
-						for(y = 0; y < height; y++){
-							frames[activeFrame].cells[x][y].setColour(newData[x][y]);
-						}
-					}
+					
+					frames[activeFrame].canvas = $(swapCanvas);
+					frames[activeFrame].context = ctx;
+					frames[activeFrame].refreshFromCanvas();
 					_active = 0;
 				};
 			})();
@@ -1442,13 +1381,185 @@
 			})();
 
 			function setSymmetry(sym){
-				var valid = {'vertical' : 1, 'horizontal' : 1, 'diagonal1' : 1, 'diagonal2' : 1, 'rotational2' : 1, 'rotational4' : 1, '4way' : 1, '8way' : 1};
+				var valid = {'vertical' : 1, 'horizontal' : 1, 'diagonal1' : 1, 'diagonal2' : 1, 'rotational2' : 1, 'rotational4' : 1, '4way' : 1, '8way' : 1, null : 1};
 				if(valid[sym] == 1){
 					symmetry = sym == symmetry ? null : sym;
 
 					$('.activeSymmetry').removeClass('activeSymmetry');
 					if(symmetry != null){
 						$('#symmetry_' + sym).addClass('activeSymmetry');
+					}
+
+					switch(symmetry){
+						case 'vertical':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - x;
+								symy = y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case 'horizontal':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = x;
+								symy = gridInfo.h - 1 - y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case 'diagonal1':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = y;
+								symy = x;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case 'diagonal2':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - y;
+								symy = gridInfo.w - 1 - x;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case 'rotational2':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - x;
+								symy = gridInfo.h - 1 - y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case 'rotational4':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - x;
+								symy = gridInfo.h - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = y;
+								symy = gridInfo.h - 1 - x;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = gridInfo.w - 1 - y;
+								symy = x;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						case '4way':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - x;
+								symy = y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = x;
+								symy = gridInfo.h - 1 - y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = gridInfo.w - 1 - x;
+								symy = gridInfo.h - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+
+						case '8way':
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+								symx = gridInfo.w - 1 - x;
+								symy = y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = x;
+								symy = gridInfo.h - 1 - y;
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = y;
+								symy = x;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symx = gridInfo.w - 1 - x;
+								symy = gridInfo.h - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+
+								symy = gridInfo.h - 1 - x;
+								symx = y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symy = x;
+								symx = gridInfo.w - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+
+								symy = gridInfo.h - 1 - x;
+								symx = gridInfo.w - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								if(symx != x || symy != y){
+									_doPixel(symx, symy, colour);
+								}
+							};
+							break;
+						default:
+							drawFunction = function(x, y, colour){
+								_doPixel(x, y, colour);
+							}
+
 					}
 				}
 			}
@@ -1555,12 +1666,20 @@
 	<body>
 		<div id="appWrapper">
 			<div id="topToolBar" class="toolbar">
-				<a title="Undo" onclick="state.undo(); return false;" href="#"><img src="images/undo.png"/></a>
-				<a title="Redo" onclick="state.redo(); return false;" href="#"><img src="images/redo.png"/></a>
-				<a title="Toggle Grid" onclick="toggleGrid(); return false;" href="#"><img src="images/grid.png"/></a>
-				<a title="Clear" onclick="frames[activeFrame].clear(); return false;" href="#"><img src="images/clear.png"/></a>
+				<div class="topToolbarGroup">
+					<a title="Move Up" onclick="shiftUp(); return false;" href="#"><img src="images/up.png"/></a>
+					<a title="Move Down" onclick="shiftDown(); return false;" href="#"><img src="images/down.png"/></a>
+					<a title="Move Left" onclick="shiftLeft(); return false;" href="#"><img src="images/left.png"/></a>
+					<a title="Move Right" onclick="shiftRight(); return false;" href="#"><img src="images/right.png"/></a>
+					<a title="Flip Vertially" onclick="transform('vflip'); return false;" href="#"><img src="images/vflip.png"/></a>
+					<a title="Flip Horizontally" onclick="transform('hflip'); return false;" href="#"><img src="images/hflip.png"/></a>
+					<a title="Flip Diagonally" onclick="transform('diagonal1'); return false;" href="#"><img src="images/dflip1.png"/></a>
+					<a title="Flip Diagon Alley" onclick="transform('diagonal2'); return false;" href="#"><img src="images/dflip2.png"/></a>
+					<a title="Rotate Counter-Clockwise" onclick="transform('rotleft'); return false;" href="#"><img src="images/rotateleft.png"/></a>
+					<a title="Rotate Clockwise" onclick="transform('rotright'); return false;" href="#"><img src="images/rotateright.png"/></a>
+				</div>
 
-				<div id="symmetryButtons">
+				<div class="topToolbarGroup">
 					<a id="symmetry_vertical" title="Vertical Symmetry" onclick="setSymmetry('vertical'); return false;" href="#"><img src="images/symmetry_vertical.png"/></a>
 					<a id="symmetry_horizontal" title="Horizontal Symmetry" onclick="setSymmetry('horizontal'); return false;" href="#"><img src="images/symmetry_horizontal.png"/></a>
 					<a id="symmetry_diagonal1" title="Diagonal Symmetry 1" onclick="setSymmetry('diagonal1'); return false;" href="#"><img src="images/symmetry_diagonal1.png"/></a>
@@ -1574,91 +1693,109 @@
 			</div>
 				<div id="leftToolBar" class="toolbar">
 					<div id="canvasHolder"></div>
-					<div class="sidebarSeparator"></div>
-					<div>
-						<a title="Pencil" id="tool_pencil" onclick="setTool('pencil'); return false;" href="#" class="currentTool"><img src="images/pencil.png"/></a>
-						<a title="Paint" id="tool_paintbrush" onclick="setTool('paintbrush'); return false;" href="#"><img src="images/paint.png"/></a>
-						<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
-						<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
-						<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
-						<a title="Line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
-						<a title="Circle" id="tool_circle" onclick="setTool('circle'); return false;" href="#"><img src="images/circle.png"/></a>
 
-						<div class="sidebarSeparator"></div>
+					<div class="sidebarSeparator">Tools</div>
 
-						<div id="brushWrapper"></div>
+					<a title="Pencil" id="tool_pencil" onclick="setTool('pencil'); return false;" href="#" class="currentTool"><img src="images/pencil.png"/></a>
+					<a title="Paint" id="tool_paintbrush" onclick="setTool('paintbrush'); return false;" href="#"><img src="images/paint.png"/></a>
+					<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
+					<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
+					<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
+					<a title="Line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
+					<a title="Circle" id="tool_circle" onclick="setTool('circle'); return false;" href="#"><img src="images/circle.png"/></a>
 
-						<div class="sidebarSeparator"></div>
+					<div class="sidebarSeparator">Brushes</div>
 
-						<a title="Blur" onclick="applyMatrix(new matrixClass([[0.05, 0.05, 0.05], [0.05, 0.6, 0.05], [0.05, 0.05, 0.05]])); return false;" href="#"><img src="images/blur.png"/></a>
-						<a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[0.1, 0.1, 0.1], [0.1, 0.2, 0.1], [0.1, 0.1, 0.1]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a>
-						<a title="Fade" onclick="applyMatrix(new matrixClass([[.8]])); return false;" href="#"><img src="images/fade.png"/></a>
-						<a title="Intensify" onclick="applyMatrix(new matrixClass([[1.2]])); return false;" href="#"><img src="images/intensify.png"/></a>
-						<a title="Vertical Blur" onclick="applyMatrix(new matrixClass([[0, 0.33, 0],[0, 0.34, 0],[0, 0.33, 0]])); return false;" href="#"><img src="images/verticalblur.png"/></a>
-						<a title="Horizontal Blur" onclick="applyMatrix(new matrixClass([[0, 0, 0],[0.33, 0.34, 0.33],[0, 0, 0]])); return false;" href="#"><img src="images/horizontalblur.png"/></a>
-						<a title="Edge Ripples" onclick="applyMatrix(new matrixClass([[0.2, 0.2, 0.2], [0.2, -0.6, 0.2], [0.2, 0.2, 0.2]])); return false;" href="#"><img src="images/ripples.png"/></a>
+					<div id="brushWrapper"></div>
 
-						<div class="sidebarSeparator"></div>
+					<div class="sidebarSeparator">Filters</div>
 
-						<a title="Move Left" onclick="transform('shiftleft'); return false;" href="#"><img src="images/left.png"/></a>
-						<a title="Move Up" onclick="transform('shiftup'); return false;" href="#"><img src="images/up.png"/></a>
-						<a title="Move Right" onclick="transform('shiftright'); return false;" href="#"><img src="images/right.png"/></a>
-						<a title="Rotate Counter-Clockwise" onclick="transform('rotleft'); return false;" href="#"><img src="images/rotateleft.png"/></a>
-						<a title="Move Down" onclick="transform('shiftdown'); return false;" href="#"><img src="images/down.png"/></a>
-						<a title="Rotate Clockwise" onclick="transform('rotright'); return false;" href="#"><img src="images/rotateright.png"/></a>
-						<a title="Flip Vertially" onclick="transform('vflip'); return false;" href="#"><img src="images/vflip.png"/></a>
-						<a title="Flip Horizontally" onclick="transform('hflip'); return false;" href="#"><img src="images/hflip.png"/></a>
-						<a title="Flip Diagonally" onclick="transform('diagonal1'); return false;" href="#"><img src="images/dflip1.png"/></a>
-						<a title="Flip Diagon Alley" onclick="transform('diagonal2'); return false;" href="#"><img src="images/dflip2.png"/></a>
-					</div>
+					<a title="Blur" onclick="applyMatrix(new matrixClass([[0.05, 0.05, 0.05], [0.05, 0.6, 0.05], [0.05, 0.05, 0.05]])); return false;" href="#"><img src="images/blur.png"/></a>
+					<!--a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[0.1, 0.1, 0.1], [0.1, 0.2, 0.1], [0.1, 0.1, 0.1]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a-->
+					<a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[.01, .02, .02, .02, .01], [.02, .03, .04, .03, .02], [.02, .04, .44, .04, .02], [.02, .03, .04, .03, .02], [.01, .02, .02, .02, .01]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a>
+					<a title="Fade" onclick="applyMatrix(new matrixClass([[.8]])); return false;" href="#"><img src="images/fade.png"/></a>
+					<a title="Intensify" onclick="applyMatrix(new matrixClass([[1.2]])); return false;" href="#"><img src="images/intensify.png"/></a>
+					<a title="Vertical Blur" onclick="applyMatrix(new matrixClass([[0, 0.33, 0],[0, 0.34, 0],[0, 0.33, 0]])); return false;" href="#"><img src="images/verticalblur.png"/></a>
+					<a title="Horizontal Blur" onclick="applyMatrix(new matrixClass([[0, 0, 0],[0.33, 0.34, 0.33],[0, 0, 0]])); return false;" href="#"><img src="images/horizontalblur.png"/></a>
+					<a title="Edge Ripples" onclick="applyMatrix(new matrixClass([[0.2, 0.2, 0.2], [0.2, -0.6, 0.2], [0.2, 0.2, 0.2]])); return false;" href="#"><img src="images/ripples.png"/></a>
+
+					<div class="sidebarSeparator">Actions</div>
+
+					<a title="Undo" onclick="state.undo(); return false;" href="#"><img src="images/undo.png"/></a>
+					<a title="Redo" onclick="state.redo(); return false;" href="#"><img src="images/redo.png"/></a>
+					<a title="Toggle Grid" onclick="toggleGrid(); return false;" href="#"><img src="images/grid.png"/></a>
+					<a title="Clear" onclick="frames[activeFrame].clear(); return false;" href="#"><img src="images/clear.png"/></a>
+
+
 				</div>
-				<div id="editgrid"></div>
-				<div id="paletteWrapper">
-					<div id="palette">
-						<div id="paletteTopSpacing"></div>
-					</div>
-					<div id="colourToolBoxWrapper">
-						<div id="colourToolBox" class="colourToolBox button">
-							<img src="images/palette.png" class="paletteButton" onclick="colourClass.createColour(255, 255, 255, 1)">
-							<img src="images/gradient.png" class="paletteButton" onclick="alert('not yet implemented');">
+				<div style="display:inline-block">
+					<div id="editgrid"></div>
+					<div id="paletteWrapper">
+						<div id="palette">
+							<div id="paletteTopSpacing"></div>
+						</div>
+						<div id="colourToolBoxWrapper">
+							<div id="colourToolBox" class="colourToolBox button">
+								<img src="images/palette.png" class="paletteButton" onclick="colourClass.createColour(255, 255, 255, 1)">
+								<img src="images/gradient.png" class="paletteButton" onclick="alert('not yet implemented');">
+							</div>
 						</div>
 					</div>
-				</div>
-				<br/>
-				<div id="footer">
-					<a class="uiButton" href="#" onclick="$('#imageLoader').trigger('click'); return false;">Open</a>
-					<input type="file" id="imageLoader" name="imageLoader" id="imageLoader" style="display:inline-block; width:0px; height:0px"/>
+					<br/>
+					<div id="footer">
+						<a class="uiButton" href="#" onclick="$('#imageLoader').trigger('click'); return false;">Open</a>
+						<input type="file" id="imageLoader" name="imageLoader" id="imageLoader" style="display:inline-block; width:0px; height:0px"/>
 
-					<a onclick="downloadImage(); return false;" href="#" class="uiButton">Save As</a>
-					<div id="filenameWrapper">
-						<input type="text" id="filename"></input>.PNG
+						<a onclick="downloadImage(); return false;" href="#" class="uiButton">Save As</a>
+						<div id="filenameWrapper">
+							<input type="text" id="filename"></input>.PNG
+						</div>
+
+						<div id="layerButtons">
+							<a title="Add New Frame" onclick="addFrame(); return false;" href="#"><img src="images/addFrame.png"/></a>
+							<a title="Delete This Frame" onclick="deleteFrame(); return false;" href="#"><img src="images/deleteFrame.png"/></a>
+						</div>
 					</div>
-				</div>
+				<div>
 
 
 
 		</div>
-		<br/><br/>
-		<div style="text-align: left; font-size: 80%" id="todo">
-			TODO:
-			<ul>
-				<li>custom gradient generating</li>
-				<li>circle and rectangle tools</li>
-				<li>frames</li>
-				<li>add mouse-controlled matrix application (e.g. "smudge")</li>
-				<li>add keyboard shortcuts</li>
-				<li>copy/paste functionality</li>
-			</ul>
-			Maybe:
-			<ul>
-				<li>abillity to create custom matrices</li>
-				<li>allow applying translucent colours on top of others, blending them and generating new colours on the fly</li>
-				<li>allow selection of underlay frame (additional tab set?)</li>
-			</ul>
-			Bugs:
-			<ul>
-				<li>Undo/redo is flakey in certain cases.</li>
-			</ul>
+		<div style="display:none">
+			<div style="text-align: left; font-size: 80%" id="todo">
+				TODO:
+				<ul>
+					<li>frames</li>
+					<li>add mouse-controlled matrix application (e.g. "smudge")</li>
+					<li>add keyboard shortcuts</li>
+					<li>copy/paste functionality</li>
+					<li>custom gradient generating</li>
+					<li>Add an "arbitrary offset" like the one in GIMP, but with a "1/2" and "1/4" button</li>
+					</li>add options:
+						<ul>
+							<li>choose backdrop of edit area</li>
+							<li>choose backdrop of thumbnail</li>
+							<li>toggle highlight of active pixel</li>
+							<li>airbursh alpha is cumulative/mixed</li>
+							<li>menu/button based toolbox</li>
+
+						</ul>
+					</li>
+					<li>Allow file saving of different types</li>
+					<li>Elegantly handle the user entering the filename, interpreting the extension.</li>
+					<li>Add a warning on loading a very large file</li>
+				</ul>
+				Maybe:
+				<ul>
+					<li>abillity to create custom matrices</li>
+					<li>allow applying translucent colours on top of others, blending them and generating new colours on the fly</li>
+					<li>allow selection of underlay frame (additional tab set?)</li>
+				</ul>
+				Bugs:
+				<ul>
+					<li>Undo/redo is flakey in certain cases.</li>
+				</ul>
+			</div>
 		</div>
 
 	</body>

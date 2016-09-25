@@ -96,6 +96,7 @@ i.fa{
 
 #leftToolBar{
 	display:inline-block;
+	vertical-align:top;
 }
 
 div.editcell{
@@ -197,7 +198,7 @@ a.uiButton:active{
 	width: min-content;
 	display: flex;
 	flex-warp: wrap;
-	min-width: 100px;
+	min-width: 130px;
 }
 
 .paletteButton{
@@ -248,9 +249,11 @@ a.uiButton:active{
 }
 
 div.sidebarSeparator{
-	height: 0.1em;
-	border-top: 1px dotted #777470;
-	margin-bottom: 0.2em;
+	text-align: center;
+	font-size: 60%;
+	border-bottom: 1px solid #654;
+	border-top: 1px solid #654;
+	margin: .2em 0 .1em 0;
 }
 
 #canvasHolder canvas{
@@ -266,7 +269,7 @@ div.sidebarSeparator{
 	vertical-align: center;
 }
 
-#symmetryButtons{
+.topToolbarGroup{
 	display: inline-block;
 	text-align:right;
 	margin-left: 2em;
@@ -293,4 +296,9 @@ div.sidebarSeparator{
 
 .highlightedCell{
 	box-shadow:-2em -2em 2em 2em rgba(128, 128, 120,0.4) inset !important;
+}
+
+#layerButtons{
+	display: inline;
+	float: left;
 }
