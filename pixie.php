@@ -29,8 +29,8 @@
 			};
 
 			var gridInfo = {
-				w : 48,
-				h : 64,
+				w : 20,
+				h : 20,
 				cellWidth : 0,
 				cellHeight : 0,
 				showing : false
@@ -330,6 +330,14 @@
 					}
 				}
 			};
+
+			function addFrame(){
+				alert('not implemented');
+			}
+
+			function deleteFrame(){
+				alert('not implemented');
+			}
 
 			function renderGrid(){
 				$('#editgrid').empty();
@@ -1315,6 +1323,9 @@
 					frames[activeFrame].canvas = $(swapCanvas);
 					frames[activeFrame].context = ctx;
 					frames[activeFrame].refreshFromCanvas();
+					$('#palette').css({
+						'height' : $('#editgrid').height() + 'px'
+					});
 					_active = 0;
 				};
 			})();
