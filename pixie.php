@@ -5,9 +5,11 @@
 		<link rel="stylesheet" href="spectrum/spectrum.css" />
 		<link rel="stylesheet" href="font-awesome/css/font-awesome.css"/>
 		<link rel="stylesheet" href="pixie.css"/>
+		<link rel="stylesheet" href="Dropit/dropit.css"/>
 		<script type="text/javascript" src="jquery.min.js"></script>
 		<script type="text/javascript" src='matrices.js'></script>
 		<script type="text/javascript" src='geometry.js'></script>
+		<script type="text/javascript" src='Dropit/dropit.js'></script>
 		<script type="text/javascript" src='spectrum/spectrum.js'></script>
 		<script type="text/javascript" src="FileSaver/FileSaver.min.js"></script>
 		<script type="text/javascript">
@@ -1676,6 +1678,8 @@
 
 			$(document).ready(function(){
 				var x, y;
+
+				$('.menu').dropit();
 				frames[activeFrame] = new frameClass(defaults.frameWidth, defaults.frameHeight);
 				frames[activeFrame].renderGrid();
 				frames[activeFrame].container.appendTo($('#editgrid'));
@@ -1758,6 +1762,18 @@
 	</head>
 	<body>
 		<div id="appWrapper">
+			<div>
+				<ul class="menu">
+					<li>
+						<a href="#">File</a>
+						<ul>
+							<li>New</li>
+							<li>Open image</li>
+							<li>Save As..</li>
+						</ul>
+					</li>
+				</ul>
+			</div>
 			<div id="topToolBar" class="toolbar">
 				<div class="topToolbarGroup">
 					<a title="Move Up" onclick="shiftUp(); return false;" href="#"><img src="images/up.png"/></a>
@@ -1821,7 +1837,7 @@
 
 
 				</div>
-				<div style="display:inline-block">
+				<div style="display:inline">
 					<div id="editgrid"></div>
 					<div id="paletteWrapper">
 						<div id="palette">

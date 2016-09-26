@@ -12,6 +12,14 @@ i.fa{
 	padding-right: 0.2em;
 	font-size: 0.9em;
 }
+ul.menu{
+	background-color: rgb(216, 210, 203);
+}
+
+.dropit-submenu{
+	background-color: rgb(216, 210, 203);
+	border-radius: 0.5em;
+}
 
 #appWrapper{
 	display: inline-block;
@@ -19,7 +27,7 @@ i.fa{
 	text-align: left;
 	border-radius: 1em;
 	box-shadow:-.1em -.1em .1em .1em rgba(0,0,0,0.5) inset, .1em .1em .1em .1em rgba(255,255,255,0.5) inset;
-	padding: 2em;
+	padding: 0 1em 1em 1em;
 	background-color: #EEE8E0;
 }
 #editgrid{
@@ -185,7 +193,7 @@ a.uiButton:active{
 
 #footer{
 	margin-top: 0.2em;
-	display: inline-block;
+	display: inline;
 	text-align:right;
 	width: 100%;
 }
