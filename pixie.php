@@ -1859,9 +1859,12 @@
 			<div style="text-align: left; font-size: 80%" id="todo">
 				TODO:
 				<ul>
+					<li>copy/paste functionality - or at least a "duplicate layer" button</li>
+					<li>abillity to change the order of layers - maybe drag'n'drop the canvases</li>
+					<li>change layout to better fit the layers.  Probably buttons at bottom and canvases on the side</li>
+					<li>abillity to import and export images/sprites using my spriteClass format</li>
 					<li>add mouse-controlled matrix application (e.g. "smudge")</li>
 					<li>add keyboard shortcuts</li>
-					<li>copy/paste functionality</li>
 					<li>custom gradient generating</li>
 					<li>Add an "arbitrary offset" like the one in GIMP, but with a "1/2" and "1/4" button</li>
 					</li>add options:
@@ -1884,6 +1887,7 @@
 					<li>abillity to create custom matrices</li>
 					<li>allow applying translucent colours on top of others, blending them and generating new colours on the fly</li>
 					<li>allow selection of underlay frame (additional tab set?)</li>
+					<li>add creation/usage of animation sequences</li>
 				</ul>
 				Bugs:
 				<ul>
