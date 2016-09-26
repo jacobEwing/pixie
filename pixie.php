@@ -28,12 +28,13 @@
 				_doPixel(x, y, colour);
 			};
 
-			var gridInfo = {
-				w : 20,
-				h : 20,
-				cellWidth : 0,
-				cellHeight : 0,
-				showing : false
+			var defaults = {
+				frameWidth : 48,
+				frameHeight : 48
+			};
+
+			var flags = {
+				showGrid : false
 			};
 
 			var mouse = {
@@ -146,6 +147,7 @@
 					for(n = 0; n < this.frames.length; n++){
 						frames[frames.length] = frameClass.restoreFromState(this.frames[n]);
 					}
+					refreshGrid();
 					if(!(activeFrame in frames)){
 						activeFrame = 0;
 					}
@@ -175,19 +177,28 @@
 			})();
 
 			/******* the frame class ********/
-			var frameClass = function(gridInfo){
+			var frameClass = function(width, height){
 				this.cells = [];
+
+				this.container = $('<div></div>');
+				this.container.addClass('layerContainer');
+
 				this.canvas = $('<canvas></canvas>');
 				this.canvas.attr('id', 'thumbnail');
 				this.canvas.appendTo($('#canvasHolder'));
-				this.canvas.attr('width', gridInfo.w + 'px');
-				this.canvas.attr('height', gridInfo.h + 'px');
-
+				this.canvas.attr('width', width + 'px');
+				this.canvas.attr('height', height + 'px');
 				this.context = this.canvas[0].getContext('2d');
 
-				this.width = gridInfo.w;
-				this.height = gridInfo.h;
+				this.width = width;
+				this.height = height;
+				this.cellSize = 0;
+				this.calcCellSize();
 
+				var me = this;
+				this.canvas.click(function(){
+					frames[activeFrame = frames.indexOf(me)].showLayer();
+				});
 			};
 
 			// calculate the best available cell size for the current frame dimensions
@@ -196,16 +207,16 @@
 				var newCellHeight = optimalScale.height / this.height;
 				var newCellSize = Math.round(newCellWidth > newCellHeight ? newCellHeight : newCellWidth);
 				if(newCellSize < optimalScale.minCellSize) newCellSize = optimalScale.minCellSize;
-				gridInfo.cellWidth = gridInfo.cellHeight = newCellSize;
+				this.cellSize = newCellSize;
 			};
 
 			frameClass.restoreFromState = function(data){
 				var x, y, pixel;
-				var rval = new frameClass({w : data.width, h : data.height});
+				var rval = new frameClass(data.width, data.height);
 				for(x = 0; x < rval.width; x++){
 					rval.cells[x] = [];
 					for(y = 0; y < rval.height; y++){
-						rval.cells[x][y] = new cellClass(x, y);
+						rval.cells[x][y] = new cellClass(rval, x, y);
 						dat = data.cells[x][y]
 						if(dat != null){
 							rval.cells[x][y].colour = data.cells[x][y];
@@ -217,17 +228,16 @@
 						rval.cells[x][y].draw($('#editgrid'));
 					}
 				}
-				refreshGrid();
 
 				return rval;
 			};
 
 			frameClass.prototype.refreshFromCanvas = function(){
 				var x, y, c;
-				this.width = gridInfo.w = this.canvas.width();
-				this.height = gridInfo.h = this.canvas.height();
+				this.width = this.canvas.width();
+				this.height = this.canvas.height();
 				this.calcCellSize();
-				renderGrid();
+				this.renderGrid();
 				for(x = 0; x < this.width; x++){
 					for(y = 0; y < this.height; y++){
 						c = getCanvasPixel(x, y);
@@ -236,7 +246,12 @@
 						this.cells[x][y].colour = stringToRGBA(getCanvasPixel(x, y));
 					}
 				}
-				
+				this.container.empty();
+				for(y = 0; y < this.height; y++){
+					for(x = 0; x < this.width; x++){
+						this.cells[x][y].draw(this.container);
+					}
+				}
 			}
 
 
@@ -273,8 +288,8 @@
 				if(this.canvas.jquery){
 					this.canvas.remove();
 				}
-				this.width = gridInfo.w;
-				this.height = gridInfo.h;
+				this.width = defaults.frameWidth;
+				this.height = defaults.frameHeight;
 				this.canvas = $('<canvas></canvas>');
 				this.canvas.attr('id', 'thumbnail');
 				this.canvas.appendTo($('#canvasHolder'));
@@ -289,8 +304,8 @@
 
 			frameClass.prototype.refreshCells = function(){
 				var x, y;
-				for(x = 0; x < gridInfo.w; x++){
-					for(y = 0; y < gridInfo.h; y++){
+				for(x = 0; x < this.width; x++){
+					for(y = 0; y < this.height; y++){
 						this.cells[x][y].refresh();
 					}
 				}
@@ -301,7 +316,7 @@
 				$('#editgrid').empty();
 				for(y = 0; y < this.cells[0].length; y++){
 					for(x = 0; x < this.cells.length; x++){
-						this.cells[x][y].element.appendTo($('#editgrid'));
+						this.cells[x][y].element.appendTo(this.container);
 					}
 				}
 			}
@@ -315,8 +330,8 @@
 			frameClass.prototype.clear = function(){
 				var x, y;
 				state.capture();
-				for(x = 0; x < gridInfo.w; x++){
-					for(y = 0; y < gridInfo.h; y++){
+				for(x = 0; x < this.width; x++){
+					for(y = 0; y < this.height; y++){
 						this.cells[x][y].setColour(null);
 					}
 				}
@@ -324,46 +339,85 @@
 
 			frameClass.prototype.reindexCells = function(){
 				var x, y;
-				for(x = 0; x < gridInfo.w; x++){
-					for(y = 0; y < gridInfo.h; y++){
+				for(x = 0; x < this.width; x++){
+					for(y = 0; y < this.height; y++){
 						this.cells[x][y].position = {'x' : x, 'y' : y};
 					}
 				}
 			};
 
-			function addFrame(){
-				alert('not implemented');
-			}
-
-			function deleteFrame(){
-				alert('not implemented');
-			}
-
-			function renderGrid(){
+			frameClass.prototype.renderGrid = function(){
 				$('#editgrid').empty();
-				$('#editgrid').width(gridInfo.w  * gridInfo.cellWidth);
-				$('#editgrid').height(gridInfo.h  * gridInfo.cellHeight);
-				frames[activeFrame].cells = [];
-				for(x = 0; x < gridInfo.w; x++){
-					frames[activeFrame].cells[x] = [];
-					for(y = 0; y < gridInfo.h; y++){
-						frames[activeFrame].cells[x][y] = new cellClass(x, y);
+				$('#editgrid').width(this.cellSize * this.width);
+				$('#editgrid').height(this.cellSize * this.height);
+				this.cells = [];
+				for(x = 0; x < this.width; x++){
+					this.cells[x] = [];
+					for(y = 0; y < this.height; y++){
+						this.cells[x][y] = new cellClass(this, x, y);
 					}
 				}
-				for(y = 0; y < gridInfo.h; y++){
-					for(x = 0; x < gridInfo.w; x++){
-						frames[activeFrame].cells[x][y].draw($('#editgrid'));
+				for(y = 0; y < this.height; y++){
+					for(x = 0; x < this.width; x++){
+						this.cells[x][y].draw(this.container);
 					}
 				}
 				refreshGrid();
 			}
 
+			frameClass.prototype.showLayer = function(){
+				$('#editgrid').empty();
+				$('#editgrid').append(this.container);
+
+				$('#editgrid').width(this.cellSize * this.width);
+				$('#editgrid').height(this.cellSize * this.height);
+				/*
+				for(y = 0; y < this.height; y++){
+					for(x = 0; x < this.width; x++){
+						this.cells[x][y].draw(this.container);
+					}
+				}
+				*/
+			}
+
+			function addFrame(){
+				var idx = frames.length;
+				frames[idx] = new frameClass(defaults.frameWidth, defaults.frameHeight);
+				for(x = 0; x < frames[idx].width; x++){
+					frames[idx].cells[x] = [];
+					for(y = 0; y < frames[idx].height; y++){
+						frames[idx].cells[x][y] = new cellClass(frames[idx], x, y);
+					}
+				}
+				for(y = 0; y < frames[idx].height; y++){
+					for(x = 0; x < frames[idx].width; x++){
+						frames[idx].cells[x][y].draw(frames[idx].container);
+					}
+				}
+				activeFrame = idx;
+				frames[idx].showLayer();
+				refreshGrid();
+			}
+
+			function deleteFrame(){
+				if(frames.length == 1){
+					frames[activeFrame].clear();
+				}else{
+					frames[activeFrame].canvas.remove();
+					frames[activeFrame].container.remove();
+					frames.splice(activeFrame, 1);
+					if(activeFrame >= frames.length) activeFrame--;
+					frames[activeFrame].showLayer();
+				}
+			}
+
+
 
 			/******* the cell class ********/
-			var cellClass = function(x, y, colour){
+			var cellClass = function(parentGrid, x, y){
 				var me = this;
-				this.width = gridInfo.cellWidth - 1;
-				this.height = gridInfo.cellHeight - 1;
+				this.grid = parentGrid;
+				this.width = this.height = this.grid.cellSize;
 				this.colour = null;
 				this.position = {
 					'x' : x,
@@ -639,8 +693,8 @@
 			function handleMouseAction(evt){
 				// find the appropriate cell at that location
 				var gridPos = $('#editgrid').position();
-				var x = Math.floor((evt.pageX - gridPos.left) / gridInfo.cellWidth);
-				var y = Math.floor((evt.pageY - gridPos.top) / gridInfo.cellHeight);
+				var x = Math.floor((evt.pageX - gridPos.left) / frames[activeFrame].cellSize);
+				var y = Math.floor((evt.pageY - gridPos.top) / frames[activeFrame].cellSize);
 				if(!(x in frames[activeFrame].cells) || !(y in frames[activeFrame].cells[x])){
 					$('#error').append("[[INVALID CELL CO-ORDINATE: (" + x + ', ' + y + ")]]");
 					return;
@@ -772,7 +826,6 @@
 
 					if(mouse.state.last != mouse.state.current){
 						if(mouse.state.last == 0){
-							console.log('setting it');
 							startPosition.x = mouse.gridPosition.x;
 							startPosition.y = mouse.gridPosition.y;
 						}
@@ -861,7 +914,7 @@
 						throw "getPixel resultType argument must either 'string' or 'object'";
 					}
 				}
-				if(x >= 0 && y >= 0 && x < gridInfo.w && y < gridInfo.h){
+				if(x >= 0 && y >= 0 && x < frames[activeFrame].width && y < frames[activeFrame].height){
 					rval = frames[activeFrame].cells[x][y].colour;
 				}
 
@@ -873,7 +926,7 @@
 			}
 
 			function setHighlight(x, y, colour){
-				if(x >= 0 && y >= 0 && x < gridInfo.w && y < gridInfo.h){
+				if(x >= 0 && y >= 0 && x < frames[activeFrame].width && y < frames[activeFrame].height){
 					if(colour == undefined) colour = null;
 					
 					frames[activeFrame].cells[x][y].setHighlight(colour);
@@ -966,7 +1019,7 @@
 				}
 
 
-				if(x >= 0 && y >= 0 && x < gridInfo.w && y < gridInfo.h){
+				if(x >= 0 && y >= 0 && x < frames[activeFrame].width && y < frames[activeFrame].height){
 					if(colour == undefined) colour = null;
 					drawFunction(x, y, colour);
 				}
@@ -1123,19 +1176,19 @@
 			}
 
 			function toggleGrid(){
-				gridInfo.showing = !gridInfo.showing;
+				flags.showGrid = !flags.showGrid;
 				refreshGrid();
 			}
 
 			function refreshGrid(){
-				if(gridInfo.showing){
+				if(flags.showGrid){
 					$('#editgrid').css({
 						'border-width': '1px 0 0 1px'
 					});
 					$('.editcell').css({
 						'border-style' : 'solid',
-						'width' : gridInfo.cellWidth - 1,
-						'height' : gridInfo.cellHeight - 1
+						'width' : frames[activeFrame].cellSize - 1,
+						'height' : frames[activeFrame].cellSize - 1
 					});
 
 				}else{
@@ -1144,8 +1197,8 @@
 					});
 					$('.editcell').css({
 						'border-style' : 'none',
-						'width' : gridInfo.cellWidth,
-						'height' : gridInfo.cellHeight 
+						'width' : frames[activeFrame].cellSize,
+						'height' : frames[activeFrame].cellSize
 					});
 				}
 			}
@@ -1166,7 +1219,7 @@
 					cell = grid[x].pop();
 					grid[x].unshift(cell);
 					cell.element.detach();
-					cell.element.prependTo($('#editgrid'));
+					cell.element.prependTo(frames[activeFrame].container);
 
 				}
 
@@ -1194,7 +1247,7 @@
 
 				}
 				for(x in holder){
-					holder[x].appendTo($('#editgrid'));
+					holder[x].appendTo(frames[activeFrame].container);
 				}
 
 				// now update the canvas
@@ -1267,11 +1320,11 @@
 
 
 					if({'rotright' : 1, 'rotleft' : 1, 'diagonal1':1, 'diagonal2' : 1}[action] == 1){
-						width = gridInfo.h;
-						height = gridInfo.w;
+						width = frames[activeFrame].height;
+						height = frames[activeFrame].width;
 					}else if({'vflip' : 1, 'hflip' : 1}[action] == 1){
-						width = gridInfo.w;
-						height = gridInfo.h;
+						width = frames[activeFrame].width;
+						height = frames[activeFrame].height;
 					}else{
 						_active = 0;
 						return;
@@ -1314,15 +1367,23 @@
 						}
 					}
 
-					gridInfo.w = width; // <-- needed anymore?
-					gridInfo.h = height;
-					frames[activeFrame].canvas.parent().append($(swapCanvas));
+					frames[activeFrame].width = width;
+					frames[activeFrame].height = height;
+					//frames[activeFrame].canvas.parent().append($(swapCanvas));
+					$(swapCanvas).insertBefore(frames[activeFrame].canvas)//.remove();
 					frames[activeFrame].canvas.remove();
 
 					
 					frames[activeFrame].canvas = $(swapCanvas);
 					frames[activeFrame].context = ctx;
 					frames[activeFrame].refreshFromCanvas();
+					frames[activeFrame].showLayer();
+					var me = frames[activeFrame];
+					frames[activeFrame].canvas.click(function(){
+						frames[activeFrame = frames.indexOf(me)].showLayer();
+					});
+
+					refreshGrid();
 					$('#palette').css({
 						'height' : $('#editgrid').height() + 'px'
 					});
@@ -1350,13 +1411,13 @@
 					topY = -Math.floor(matrix.height / 2);
 					var mainColour = getPixel(x, y).rgba;
 
-					for(x = 0; x < gridInfo.w; x++){
+					for(x = 0; x < frames[activeFrame].width; x++){
 						newData[x] = [];
-						for(y = 0; y < gridInfo.h; y++){
+						for(y = 0; y < frames[activeFrame].height; y++){
 							colourTally = {red : 0, green : 0, blue : 0, alpha : 0};
 							for(dx = 0; dx < matrix.width; dx++){
 								for(dy = 0; dy < matrix.height; dy++){
-									rgb = frames[activeFrame].cells[(x + leftX + dx + gridInfo.w) % gridInfo.w][(y + topY + dy + gridInfo.h) % gridInfo.h].element.css('background-color');
+									rgb = frames[activeFrame].cells[(x + leftX + dx + frames[activeFrame].width) % frames[activeFrame].width][(y + topY + dy + frames[activeFrame].height) % frames[activeFrame].height].element.css('background-color');
 									p = rgb.substring(rgb.indexOf('(') + 1, rgb.lastIndexOf(')')).split(/,\s*/);
 									if(p.length == 3) p[p.length] = 1;
 									colourTally.red += p[0] * matrix.val(dx, dy);
@@ -1377,9 +1438,9 @@
 						}
 					}
 					var ctx = frame.context;
-					ctx.clearRect(0, 0, gridInfo.w, gridInfo.h);
-					for(x = 0; x < gridInfo.w; x++){
-						for(y = 0; y < gridInfo.h; y++){
+					ctx.clearRect(0, 0, frames[activeFrame].width, frames[activeFrame].height);
+					for(x = 0; x < frames[activeFrame].width; x++){
+						for(y = 0; y < frames[activeFrame].height; y++){
 							if(newData[x][y] == null){
 								frame.cells[x][y].setColour(null);
 							}else{
@@ -1405,7 +1466,7 @@
 						case 'vertical':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - x;
+								symx = frames[activeFrame].width - 1 - x;
 								symy = y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
@@ -1416,7 +1477,7 @@
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
 								symx = x;
-								symy = gridInfo.h - 1 - y;
+								symy = frames[activeFrame].height - 1 - y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1427,8 +1488,8 @@
 								_doPixel(x, y, colour);
 								symx = y;
 								symy = x;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1437,10 +1498,10 @@
 						case 'diagonal2':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - y;
-								symy = gridInfo.w - 1 - x;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = frames[activeFrame].width - 1 - y;
+								symy = frames[activeFrame].width - 1 - x;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1449,8 +1510,8 @@
 						case 'rotational2':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - x;
-								symy = gridInfo.h - 1 - y;
+								symx = frames[activeFrame].width - 1 - x;
+								symy = frames[activeFrame].height - 1 - y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1459,26 +1520,26 @@
 						case 'rotational4':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - x;
-								symy = gridInfo.h - 1 - y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = frames[activeFrame].width - 1 - x;
+								symy = frames[activeFrame].height - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 								symx = y;
-								symy = gridInfo.h - 1 - x;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symy = frames[activeFrame].height - 1 - x;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
-								symx = gridInfo.w - 1 - y;
+								symx = frames[activeFrame].width - 1 - y;
 								symy = x;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1487,22 +1548,22 @@
 						case '4way':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - x;
+								symx = frames[activeFrame].width - 1 - x;
 								symy = y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 								symx = x;
-								symy = gridInfo.h - 1 - y;
+								symy = frames[activeFrame].height - 1 - y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
-								symx = gridInfo.w - 1 - x;
-								symy = gridInfo.h - 1 - y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = frames[activeFrame].width - 1 - x;
+								symy = frames[activeFrame].height - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1512,55 +1573,55 @@
 						case '8way':
 							drawFunction = function(x, y, colour){
 								_doPixel(x, y, colour);
-								symx = gridInfo.w - 1 - x;
+								symx = frames[activeFrame].width - 1 - x;
 								symy = y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 								symx = x;
-								symy = gridInfo.h - 1 - y;
+								symy = frames[activeFrame].height - 1 - y;
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 								symx = y;
 								symy = x;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
-								symx = gridInfo.w - 1 - x;
-								symy = gridInfo.h - 1 - y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = frames[activeFrame].width - 1 - x;
+								symy = frames[activeFrame].height - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 
-								symy = gridInfo.h - 1 - x;
+								symy = frames[activeFrame].height - 1 - x;
 								symx = y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
 								symy = x;
-								symx = gridInfo.w - 1 - y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symx = frames[activeFrame].width - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
 
-								symy = gridInfo.h - 1 - x;
-								symx = gridInfo.w - 1 - y;
-								symx = symx < 0 ? 0 : (symx >= gridInfo.w - 1 ? gridInfo.w - 1 : symx);
-								symy = symy < 0 ? 0 : (symy >= gridInfo.h - 1 ? gridInfo.h - 1 : symy);
+								symy = frames[activeFrame].height - 1 - x;
+								symx = frames[activeFrame].width - 1 - y;
+								symx = symx < 0 ? 0 : (symx >= frames[activeFrame].width - 1 ? frames[activeFrame].width - 1 : symx);
+								symy = symy < 0 ? 0 : (symy >= frames[activeFrame].height - 1 ? frames[activeFrame].height - 1 : symy);
 								if(symx != x || symy != y){
 									_doPixel(symx, symy, colour);
 								}
@@ -1595,11 +1656,12 @@
 
 			$(document).ready(function(){
 				var x, y;
-				frames[activeFrame] = new frameClass(gridInfo);
-				frames[activeFrame].calcCellSize();
+				frames[activeFrame] = new frameClass(defaults.frameWidth, defaults.frameHeight);
+				frames[activeFrame].renderGrid();
+				frames[activeFrame].container.appendTo($('#editgrid'));
+				refreshGrid();
 
 				//----------------- render the actual pixel grid
-				renderGrid();
 
 				//----------------- render default colours
 				colours = [];
@@ -1648,10 +1710,10 @@
 					mouse.state.last = mouse.state.current;
 
 					var gridPos = $('#editgrid').position();
-					var x = Math.floor((evt.pageX - gridPos.left) / gridInfo.cellWidth);
-					var y = Math.floor((evt.pageY - gridPos.top) / gridInfo.cellHeight);
+					var x = Math.floor((evt.pageX - gridPos.left) / frames[activeFrame].cellSize);
+					var y = Math.floor((evt.pageY - gridPos.top) / frames[activeFrame].cellSize);
 					$('.activeCell').removeClass('activeCell');
-					if(x > 0 && x < gridInfo.w && y > 0 && y < gridInfo.h){
+					if(x > 0 && x < frames[activeFrame].width && y > 0 && y < frames[activeFrame].height){
 						applyBrush(x, y, 'active');
 					}
 
@@ -1789,6 +1851,7 @@
 							<li>toggle highlight of active pixel</li>
 							<li>airbursh alpha is cumulative/mixed</li>
 							<li>menu/button based toolbox</li>
+							<li>grid colour</li>
 
 						</ul>
 					</li>
