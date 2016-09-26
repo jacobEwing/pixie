@@ -321,12 +321,6 @@
 				}
 			}
 
-			frameClass.prototype.download = function(){
-				this.canvas[0].toBlob(function(blob) {
-					saveAs(blob, $('#filename').val() + '.png');
-				});
-			}
-
 			frameClass.prototype.clear = function(){
 				var x, y;
 				state.capture();
@@ -371,14 +365,40 @@
 
 				$('#editgrid').width(this.cellSize * this.width);
 				$('#editgrid').height(this.cellSize * this.height);
-				/*
-				for(y = 0; y < this.height; y++){
-					for(x = 0; x < this.width; x++){
-						this.cells[x][y].draw(this.container);
-					}
-				}
-				*/
 			}
+
+			frameClass.prototype.download = function(){
+				this.canvas[0].toBlob(function(blob) {
+					saveAs(blob, $('#filename').val() + '.png');
+				});
+			}
+
+			downloadAsSprite = function(){
+				var n;
+				var height = 0;
+				var width = 0;
+				var x = 0;
+				var canvas, ctx;
+				for(n = 0; n < frames.length; n++){
+					if(frames[n].height > height) height = frames[n].height;
+					width += frames[n].width;
+				}
+
+				canvas = $('<canvas></canvas>')[0];
+
+				canvas.width = width;
+				canvas.height = height;
+				ctx = canvas.getContext('2d');
+				for(n = 0; n < frames.length; n++){
+					ctx.drawImage(frames[n].canvas[0], x, 0);
+					x += frames[n].width;
+				}
+				canvas.toBlob(function(blob) {
+					saveAs(blob, $('#filename').val() + '.png');
+				});
+				
+			}
+
 
 			function addFrame(){
 				var idx = frames.length;
@@ -1820,6 +1840,7 @@
 						<input type="file" id="imageLoader" name="imageLoader" id="imageLoader" style="display:inline-block; width:0px; height:0px"/>
 
 						<a onclick="downloadImage(); return false;" href="#" class="uiButton">Save As</a>
+						<a onclick="downloadAsSprite(); return false;" href="#" class="uiButton">Save Sprite Image</a>
 						<div id="filenameWrapper">
 							<input type="text" id="filename"></input>.PNG
 						</div>
@@ -1838,7 +1859,6 @@
 			<div style="text-align: left; font-size: 80%" id="todo">
 				TODO:
 				<ul>
-					<li>frames</li>
 					<li>add mouse-controlled matrix application (e.g. "smudge")</li>
 					<li>add keyboard shortcuts</li>
 					<li>copy/paste functionality</li>
