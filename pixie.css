@@ -244,8 +244,8 @@ a.uiButton:active{
 
 
 #canvasHolder {
-/*	background-color: #a0a0a0;*/
 	text-align: center;
+	line-height: 0px;
 }
 
 div.sidebarSeparator{
@@ -267,6 +267,7 @@ div.sidebarSeparator{
 	);
 	display: inline-block;
 	vertical-align: center;
+	margin: 0.1em;
 }
 
 .topToolbarGroup{
