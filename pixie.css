@@ -1,7 +1,7 @@
 body{
 	text-align: center;
 	font-family: 'Harmattan', sans-serif;
-	background: url(images/pattern2.png);
+	background: url(images/spinny.png);
 }
 
 a {
@@ -13,12 +13,29 @@ i.fa{
 	font-size: 0.9em;
 }
 ul.menu{
-	background-color: rgb(216, 210, 203);
+	padding: 0.25em 0 0.25em 0;
+	text-decoration: none;
 }
 
-.dropit-submenu{
+ul.menu a{
+	font-weight: bold;
+	text-decoration: none;
+}
+
+ul.dropit-submenu{
 	background-color: rgb(216, 210, 203);
+	border: 1px solid #000;
 	border-radius: 0.5em;
+	padding: 0.25em;
+}
+
+ul.dropit-submenu li{
+	margin-left: 0.5em;
+}
+
+.dropit .dropit-trigger{
+	display: inline;
+	margin-left: 1em;
 }
 
 #appWrapper{

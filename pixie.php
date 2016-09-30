@@ -503,7 +503,7 @@
 
 			function getCanvasPixel(x, y){
 				var vals = frames[activeFrame].context.getImageData(x, y, 1, 1).data;
-				return 'rgba(' + vals[0] + ', ' + vals[1] + ', ' + vals[2] + ', ' + vals[3] + ')';
+				return 'rgba(' + vals[0] + ', ' + vals[1] + ', ' + vals[2] + ', ' + (vals[3] / 255) + ')';
 			}
 
 
@@ -1772,6 +1772,16 @@
 							<li>Save As..</li>
 						</ul>
 					</li>
+					<li>
+						<a href="#">Options</a>
+						<ul>
+							<li>Editor Backdrop</li>
+							<li>Thumbnail Backdrop</li>
+							<li>Highlight Active Pixel</li>
+							<li>airbursh alpha is cumulative/mixed</li>
+							<li>grid colour</li>
+						</ul>
+					</li>
 				</ul>
 			</div>
 			<div id="topToolBar" class="toolbar">
@@ -1882,7 +1892,7 @@
 					<li>add mouse-controlled matrix application (e.g. "smudge")</li>
 					<li>add keyboard shortcuts</li>
 					<li>custom gradient generating</li>
-					<li>Add an "arbitrary offset" like the one in GIMP, but with a "1/2" and "1/4" button</li>
+					<li>Add an "arbitrary offset" (ie translation) like the one in GIMP, but with a "1/2" and "1/4" button</li>
 					</li>add options:
 						<ul>
 							<li>choose backdrop of edit area</li>
@@ -1907,6 +1917,8 @@
 				</ul>
 				Bugs:
 				<ul>
+					<li>There seems to be an issue with loading any image more than once per session</li>
+					<li>colour select should pick an existing colour if it's available (rather than creating a new one)</li>
 					<li>Undo/redo is flakey in certain cases.</li>
 				</ul>
 			</div>
