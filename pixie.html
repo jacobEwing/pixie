@@ -18,7 +18,6 @@
 			var cells, colours, drawColour, eraseColour;
 			var symmetry = null;
 			var colours = [];
-			var canvas, context;
 			var optimalScale = {
 				width : 500,
 				height : 500,
@@ -31,8 +30,8 @@
 			};
 
 			var defaults = {
-				frameWidth : 48,
-				frameHeight : 48
+				frameWidth : 29,
+				frameHeight : 29
 			};
 
 			var flags = {
@@ -121,66 +120,10 @@
 				return rval;
 			}
 
-			var state = (function(){
-				var pastStates = [];
-				var futureStates = [];
-
-				var stateClass = function(){
-					this.frames = [];
-				};
-
-				stateClass.prototype.capture = function(){
-					var n;
-					for(n in frames){
-						this.frames[n] = frames[n].capture();
-					}
-				};
-
-				stateClass.prototype.restore = function(){
-					var oldSymmetry = symmetry;
-					var n;
-					for(n = 0; n < frames.length; n++){
-						frames[n].destroy();
-						frames[n] = null;
-					}
-					frames = [];
-					$('#canvasHolder').empty();
-
-					for(n = 0; n < this.frames.length; n++){
-						frames[frames.length] = frameClass.restoreFromState(this.frames[n]);
-					}
-					refreshGrid();
-					if(!(activeFrame in frames)){
-						activeFrame = 0;
-					}
-					frames[activeFrame].refreshCells();
-					symmetry = oldSymmetry;
-				};
-
-				return {
-					capture : function(){
-						var state = new stateClass();
-						state.capture();
-						pastStates[pastStates.length] = state;
-					},
-					undo : function(){
-						if(pastStates.length == 0) return;
-						var state = pastStates.pop();
-						state.restore();
-						futureStates[futureStates.length] = state;
-					},
-					redo : function(){
-						if(futureStates.length == 0) return;
-						var state = futureStates.pop();
-						state.restore();
-						pastStates[pastStates.length] = state;
-					}
-				};
-			})();
-
 			/******* the frame class ********/
 			var frameClass = function(width, height){
 				this.cells = [];
+				this.history = {undo : [], redo : []};;
 
 				this.container = $('<div></div>');
 				this.container.addClass('layerContainer');
@@ -201,6 +144,7 @@
 				this.canvas.click(function(){
 					frames[activeFrame = frames.indexOf(me)].showLayer();
 				});
+
 			};
 
 			// calculate the best available cell size for the current frame dimensions
@@ -212,26 +156,64 @@
 				this.cellSize = newCellSize;
 			};
 
-			frameClass.restoreFromState = function(data){
-				var x, y, pixel;
-				var rval = new frameClass(data.width, data.height);
-				for(x = 0; x < rval.width; x++){
-					rval.cells[x] = [];
-					for(y = 0; y < rval.height; y++){
-						rval.cells[x][y] = new cellClass(rval, x, y);
-						dat = data.cells[x][y]
-						if(dat != null){
-							rval.cells[x][y].colour = data.cells[x][y];
-						}
-					}
+			frameClass.prototype.capture = function(mode){
+				if(!mode in ['undo', 'redo']){
+					throw 'Invalid capture mode "' + mode + '"';
 				}
-				for(y = 0; y < rval.height; y++){
-					for(x = 0; x < rval.width; x++){
-						rval.cells[x][y].draw($('#editgrid'));
-					}
-				}
+				//create a new canvas
+				var newCanvas = document.createElement('canvas');
+				var context = newCanvas.getContext('2d');
 
-				return rval;
+				//set dimensions
+				newCanvas.width = this.width;
+				newCanvas.height = this.height;
+
+				//apply the old canvas to the new one
+				context.drawImage(this.canvas[0], 0, 0);
+				this.history[mode].push(newCanvas);
+
+				if(mode == 'undo'){
+					this.history['redo'].splice(0, this.history['redo'].length);
+				}
+			};
+
+			frameClass.prototype.readPixel = function(x, y){
+				var vals = this.context.getImageData(x, y, 1, 1).data;
+				return 'rgba(' + vals[0] + ', ' + vals[1] + ', ' + vals[2] + ', ' + (vals[3] / 255) + ')';
+			};
+
+			frameClass.prototype.redo = function(){
+				if(this.history.redo.length < 1) return;
+				var newCanvas = $(this.history.redo.pop());
+				newCanvas.insertBefore(this.canvas);
+				this.canvas.detach();
+				this.history.undo.push(this.canvas);
+				this.canvas = newCanvas;
+				var me = this;
+				this.canvas.click(function(){
+					frames[activeFrame = frames.indexOf(me)].showLayer();
+				});
+				this.width = this.canvas[0].width;
+				this.height = this.canvas[0].height;
+				this.context = this.canvas[0].getContext('2d');
+				this.refreshFromCanvas();
+			};
+
+			frameClass.prototype.undo = function(){
+				if(this.history.undo.length < 1) return;
+				var newCanvas = $(this.history.undo.pop());
+				newCanvas.insertBefore(this.canvas);
+				this.canvas.detach();
+				this.history.redo.push(this.canvas);
+				this.canvas = newCanvas;
+				var me = this;
+				this.canvas.click(function(){
+					frames[activeFrame = frames.indexOf(me)].showLayer();
+				});
+				this.width = this.canvas[0].width;
+				this.height = this.canvas[0].height;
+				this.context = this.canvas[0].getContext('2d');
+				this.refreshFromCanvas();
 			};
 
 			frameClass.prototype.refreshFromCanvas = function(){
@@ -242,10 +224,9 @@
 				this.renderGrid();
 				for(x = 0; x < this.width; x++){
 					for(y = 0; y < this.height; y++){
-						c = getCanvasPixel(x, y);
+						c = this.readPixel(x, y);
 						this.cells[x][y].element.css('background-color', c);
-
-						this.cells[x][y].colour = stringToRGBA(getCanvasPixel(x, y));
+						this.cells[x][y].colour = stringToRGBA(c);
 					}
 				}
 				this.container.empty();
@@ -254,8 +235,7 @@
 						this.cells[x][y].draw(this.container);
 					}
 				}
-			}
-
+			};
 
 			frameClass.prototype.destroy = function(){
 				this.canvas.remove();
@@ -266,24 +246,6 @@
 				}
 				this.context = null;
 				return;
-			};
-
-			frameClass.prototype.capture = function(){
-				var rval = {
-					'width' : this.width,
-					'height' : this.height,
-					'cells' : []
-				};
-				var x, y, c;
-				for(x = 0; x < this.cells.length; x++){
-					rval.cells[x] = [];
-					for(y = 0; y < this.cells[x].length; y++){
-						c = this.cells[x][y].colour;
-
-						rval.cells[x][y] = c == null ? null : c;
-					}
-				}
-				return rval;
 			};
 
 			frameClass.prototype.resetCanvas = function(){
@@ -315,7 +277,8 @@
 
 			frameClass.prototype.rebuild = function(){
 				var x, y;
-				$('#editgrid').empty();
+				//$('#editgrid').empty();
+				this.container.empty();
 				for(y = 0; y < this.cells[0].length; y++){
 					for(x = 0; x < this.cells.length; x++){
 						this.cells[x][y].element.appendTo(this.container);
@@ -325,7 +288,6 @@
 
 			frameClass.prototype.clear = function(){
 				var x, y;
-				state.capture();
 				for(x = 0; x < this.width; x++){
 					for(y = 0; y < this.height; y++){
 						this.cells[x][y].setColour(null);
@@ -343,9 +305,9 @@
 			};
 
 			frameClass.prototype.renderGrid = function(){
-				$('#editgrid').empty();
-				$('#editgrid').width(this.cellSize * this.width);
-				$('#editgrid').height(this.cellSize * this.height);
+				this.container.empty();
+				this.container.width(this.cellSize * this.width);
+				this.container.height(this.cellSize * this.height);
 				this.cells = [];
 				for(x = 0; x < this.width; x++){
 					this.cells[x] = [];
@@ -804,7 +766,7 @@
 					if(mouse.state.current == 0){
 						if(mouse.state.last != mouse.state.current){
 							remove_highlights();
-							state.capture();
+							frames[activeFrame].capture('undo');
 							if(mouse.state.last == 1){
 								line(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y, drawColour);
 							}else if(mouse.state.last == 3){
@@ -834,7 +796,7 @@
 					if(mouse.state.current == 0){
 						if(mouse.state.last != mouse.state.current){
 							remove_highlights();
-							state.capture();
+							frames[activeFrame].capture('undo');
 							if(mouse.state.last == 1){
 								circle(startPosition.x, startPosition.y, Math.floor(distance(startPosition.x, startPosition.y, mouse.gridPosition.x, mouse.gridPosition.y)), drawColour, 'hollow');
 							}else if(mouse.state.last == 3){
@@ -867,7 +829,7 @@
 					return;
 				}
 				if(mouse.state.current != 0 && mouse.state.current != mouse.state.last){
-					state.capture();
+					frames[activeFrame].capture('undo');
 				}
 
 				applyAirbrush(mouse.gridPosition.x, mouse.gridPosition.y, colour);
@@ -883,7 +845,7 @@
 					return;
 				}
 				if(mouse.state.current != mouse.state.last){
-					state.capture();
+					frames[activeFrame].capture('undo');
 				}
 
 				applyBrush(mouse.gridPosition.x, mouse.gridPosition.y, colour);
@@ -896,11 +858,13 @@
 				}else if(mouse.state.current == 3){
 					colour = eraseColour;
 				}else{
+					if(mouse.state.last != mouse.state.current){
+						frames[activeFrame].capture('undo');
+					}
 					return;
 				}
 
 				if(mouse.state.last != mouse.state.current){
-					state.capture();
 					applyBrush(mouse.gridPosition.x, mouse.gridPosition.y, colour);
 					return;
 				}
@@ -1168,8 +1132,8 @@
 				if(targetColour == colour) return;
 
 				if(iteration == undefined){
+					frames[activeFrame].capture('undo');
 					iteration = 1;
-					state.capture();
 				}
 				if(iteration > 1000){
 					debugger;
@@ -1234,6 +1198,7 @@
 				// unshift() - adds one at the start
 				// pop() - pulls one off the end
 				// push() - adds one at the end
+				frames[activeFrame].capture('undo');
 
 				var grid = frames[activeFrame].cells;
 				var x, cell;
@@ -1257,6 +1222,7 @@
 			}
 
 			function shiftUp(){
+				frames[activeFrame].capture('undo');
 
 				var grid = frames[activeFrame].cells;
 				var x, cell;
@@ -1286,6 +1252,8 @@
 			function shiftLeft(){
 				// foo.unshift(foo.pop()); //<-- shuffling rightward
 				// foo.push(foo.shift()); // <<-- shuffling leftward
+				frames[activeFrame].capture('undo');
+
 				var y;
 				var grid = frames[activeFrame].cells;
 				var col = grid.shift();
@@ -1309,6 +1277,8 @@
 			function shiftRight(){
 				// foo.unshift(foo.pop()); //<-- shuffling rightward
 				// foo.push(foo.shift()); // <<-- shuffling leftward
+				frames[activeFrame].capture('undo');
+
 				var y;
 				var grid = frames[activeFrame].cells;
 				var col = grid.pop();
@@ -1335,7 +1305,9 @@
 				return function(action){
 					if(_active) return;
 					_active = 1;
-					state.capture();
+
+					frames[activeFrame].capture('undo');
+
 					var x, y, width, height;
 					//var newData = [];
 					var swapCanvas = $('<canvas></canvas>')[0];
@@ -1419,7 +1391,8 @@
 				return function(matrix){
 					if(_active != 0) return;
 					_active = 1;
-					state.capture();
+					frames[activeFrame].capture('undo');
+
 					var x, y, p, dx, dy, leftX, topY, width, height, idx, n, rgb;
 					var newData = [], colourTally, matrixTally, newColour;
 					var frame = frames[activeFrame];
@@ -1658,7 +1631,6 @@
 				}
 			}
 
-
 			function handleImport(e){
 				var reader = new FileReader();
 				reader.onload = function(event){
@@ -1810,78 +1782,77 @@
 				</div>
 
 			</div>
-				<div id="leftToolBar" class="toolbar">
-					<div id="canvasHolder"></div>
+			<div id="leftToolBar" class="toolbar">
+				<div id="canvasHolder"></div>
 
-					<div class="sidebarSeparator">Tools</div>
+				<div class="sidebarSeparator">Tools</div>
 
-					<a title="Pencil" id="tool_pencil" onclick="setTool('pencil'); return false;" href="#" class="currentTool"><img src="images/pencil.png"/></a>
-					<a title="Paint" id="tool_paintbrush" onclick="setTool('paintbrush'); return false;" href="#"><img src="images/paint.png"/></a>
-					<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
-					<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
-					<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
-					<a title="Line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
-					<a title="Circle" id="tool_circle" onclick="setTool('circle'); return false;" href="#"><img src="images/circle.png"/></a>
+				<a title="Pencil" id="tool_pencil" onclick="setTool('pencil'); return false;" href="#" class="currentTool"><img src="images/pencil.png"/></a>
+				<a title="Paint" id="tool_paintbrush" onclick="setTool('paintbrush'); return false;" href="#"><img src="images/paint.png"/></a>
+				<a title="Fill" id="tool_floodfill" onclick="setTool('floodfill'); return false;" href="#"><img src="images/bucketfill.png"/></a>
+				<a title="Sample" id="tool_sample" onclick="setTool('sample'); return false;" href="#"><img src="images/sample.png"/></a>
+				<a title="Airbrush" id="tool_airbrush" onclick="setTool('airbrush'); return false;" href="#"><img src="images/airbrush.png"/></a>
+				<a title="Line" id="tool_line" onclick="setTool('line'); return false;" href="#"><img src="images/line.png"/></a>
+				<a title="Circle" id="tool_circle" onclick="setTool('circle'); return false;" href="#"><img src="images/circle.png"/></a>
 
-					<div class="sidebarSeparator">Brushes</div>
+				<div class="sidebarSeparator">Brushes</div>
 
-					<div id="brushWrapper"></div>
+				<div id="brushWrapper"></div>
 
-					<div class="sidebarSeparator">Filters</div>
+				<div class="sidebarSeparator">Filters</div>
 
-					<a title="Blur" onclick="applyMatrix(new matrixClass([[0.05, 0.05, 0.05], [0.05, 0.6, 0.05], [0.05, 0.05, 0.05]])); return false;" href="#"><img src="images/blur.png"/></a>
-					<!--a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[0.1, 0.1, 0.1], [0.1, 0.2, 0.1], [0.1, 0.1, 0.1]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a-->
-					<a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[.01, .02, .02, .02, .01], [.02, .03, .04, .03, .02], [.02, .04, .44, .04, .02], [.02, .03, .04, .03, .02], [.01, .02, .02, .02, .01]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a>
-					<a title="Fade" onclick="applyMatrix(new matrixClass([[.8]])); return false;" href="#"><img src="images/fade.png"/></a>
-					<a title="Intensify" onclick="applyMatrix(new matrixClass([[1.2]])); return false;" href="#"><img src="images/intensify.png"/></a>
-					<a title="Vertical Blur" onclick="applyMatrix(new matrixClass([[0, 0.33, 0],[0, 0.34, 0],[0, 0.33, 0]])); return false;" href="#"><img src="images/verticalblur.png"/></a>
-					<a title="Horizontal Blur" onclick="applyMatrix(new matrixClass([[0, 0, 0],[0.33, 0.34, 0.33],[0, 0, 0]])); return false;" href="#"><img src="images/horizontalblur.png"/></a>
-					<a title="Edge Ripples" onclick="applyMatrix(new matrixClass([[0.2, 0.2, 0.2], [0.2, -0.6, 0.2], [0.2, 0.2, 0.2]])); return false;" href="#"><img src="images/ripples.png"/></a>
+				<a title="Blur" onclick="applyMatrix(new matrixClass([[0.05, 0.05, 0.05], [0.05, 0.6, 0.05], [0.05, 0.05, 0.05]])); return false;" href="#"><img src="images/blur.png"/></a>
+				<!--a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[0.1, 0.1, 0.1], [0.1, 0.2, 0.1], [0.1, 0.1, 0.1]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a-->
+				<a title="Heavy Blur" onclick="applyMatrix(new matrixClass([[.01, .02, .02, .02, .01], [.02, .03, .04, .03, .02], [.02, .04, .44, .04, .02], [.02, .03, .04, .03, .02], [.01, .02, .02, .02, .01]])); return false;" href="#"><img src="images/HeavyBlur.png"/></a>
+				<a title="Fade" onclick="applyMatrix(new matrixClass([[.8]])); return false;" href="#"><img src="images/fade.png"/></a>
+				<a title="Intensify" onclick="applyMatrix(new matrixClass([[1.2]])); return false;" href="#"><img src="images/intensify.png"/></a>
+				<a title="Vertical Blur" onclick="applyMatrix(new matrixClass([[0, 0.33, 0],[0, 0.34, 0],[0, 0.33, 0]])); return false;" href="#"><img src="images/verticalblur.png"/></a>
+				<a title="Horizontal Blur" onclick="applyMatrix(new matrixClass([[0, 0, 0],[0.33, 0.34, 0.33],[0, 0, 0]])); return false;" href="#"><img src="images/horizontalblur.png"/></a>
+				<a title="Edge Ripples" onclick="applyMatrix(new matrixClass([[0.2, 0.2, 0.2], [0.2, -0.6, 0.2], [0.2, 0.2, 0.2]])); return false;" href="#"><img src="images/ripples.png"/></a>
 
-					<div class="sidebarSeparator">Actions</div>
+				<div class="sidebarSeparator">Actions</div>
 
-					<a title="Undo" onclick="state.undo(); return false;" href="#"><img src="images/undo.png"/></a>
-					<a title="Redo" onclick="state.redo(); return false;" href="#"><img src="images/redo.png"/></a>
-					<a title="Toggle Grid" onclick="toggleGrid(); return false;" href="#"><img src="images/grid.png"/></a>
-					<a title="Clear" onclick="frames[activeFrame].clear(); return false;" href="#"><img src="images/clear.png"/></a>
+				<a title="Undo" onclick="frames[activeFrame].undo(); return false;" href="#"><img src="images/undo.png"/></a>
+				<a title="Redo" onclick="frames[activeFrame].redo(); return false;" href="#"><img src="images/redo.png"/></a>
+				<a title="Toggle Grid" onclick="toggleGrid(); return false;" href="#"><img src="images/grid.png"/></a>
+				<a title="Clear" onclick="frames[activeFrame].clear(); return false;" href="#"><img src="images/clear.png"/></a>
+			</div>
 
 
+			<div style="display:inline">
+				<div id="editgrid"></div>
+				<div id="paletteWrapper">
+					<div id="palette">
+						<div id="paletteTopSpacing"></div>
+					</div>
+					<div id="colourToolBoxWrapper">
+						<div id="colourToolBox" class="colourToolBox button">
+							<img src="images/palette.png" class="paletteButton" onclick="colourClass.createColour(255, 255, 255, 1)">
+							<img src="images/gradient.png" class="paletteButton" onclick="alert('not yet implemented');">
+						</div>
+					</div>
 				</div>
-				<div style="display:inline">
-					<div id="editgrid"></div>
-					<div id="paletteWrapper">
-						<div id="palette">
-							<div id="paletteTopSpacing"></div>
-						</div>
-						<div id="colourToolBoxWrapper">
-							<div id="colourToolBox" class="colourToolBox button">
-								<img src="images/palette.png" class="paletteButton" onclick="colourClass.createColour(255, 255, 255, 1)">
-								<img src="images/gradient.png" class="paletteButton" onclick="alert('not yet implemented');">
-							</div>
-						</div>
+				<br/>
+				<div id="footer">
+					<a class="uiButton" href="#" onclick="$('#imageLoader').trigger('click'); return false;">Open</a>
+					<input type="file" id="imageLoader" name="imageLoader" id="imageLoader" style="display:inline-block; width:0px; height:0px"/>
+
+					<a onclick="downloadImage(); return false;" href="#" class="uiButton">Save As</a>
+					<a onclick="downloadAsSprite(); return false;" href="#" class="uiButton">Save Sprite Image</a>
+					<div id="filenameWrapper">
+						<input type="text" id="filename"></input>.PNG
 					</div>
-					<br/>
-					<div id="footer">
-						<a class="uiButton" href="#" onclick="$('#imageLoader').trigger('click'); return false;">Open</a>
-						<input type="file" id="imageLoader" name="imageLoader" id="imageLoader" style="display:inline-block; width:0px; height:0px"/>
 
-						<a onclick="downloadImage(); return false;" href="#" class="uiButton">Save As</a>
-						<a onclick="downloadAsSprite(); return false;" href="#" class="uiButton">Save Sprite Image</a>
-						<div id="filenameWrapper">
-							<input type="text" id="filename"></input>.PNG
-						</div>
-
-						<div id="layerButtons">
-							<a title="Add New Frame" onclick="addFrame(); return false;" href="#"><img src="images/addFrame.png"/></a>
-							<a title="Delete This Frame" onclick="deleteFrame(); return false;" href="#"><img src="images/deleteFrame.png"/></a>
-						</div>
+					<div id="layerButtons">
+						<a title="Add New Frame" onclick="addFrame(); return false;" href="#"><img src="images/addFrame.png"/></a>
+						<a title="Delete This Frame" onclick="deleteFrame(); return false;" href="#"><img src="images/deleteFrame.png"/></a>
 					</div>
-				<div>
-
-
-
+				</div>
+			</div>
 		</div>
-		<div style="display:none">
+
+		<div style="margin-top: 2em">
+			<div id="testing"></div>
 			<div style="text-align: left; font-size: 80%" id="todo">
 				TODO:
 				<ul>
@@ -1907,6 +1878,11 @@
 					<li>Allow file saving of different types</li>
 					<li>Elegantly handle the user entering the filename, interpreting the extension.</li>
 					<li>Add a warning on loading a very large file</li>
+					<li>Make the editor fully usable offline with .htaccess - do this late in the dev</li>
+				</ul>
+				Later Updates:
+				<ul>
+					<li>handle the undo system as described by Cyel - show a scrollable spectrum of changes made, and allow clicking on any one.</li>
 				</ul>
 				Maybe:
 				<ul>
