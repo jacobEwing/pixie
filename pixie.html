@@ -85,6 +85,48 @@
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1],
 						[ 1, 1, 1, 1, 1]
+
+				       ]),
+				new matrixClass([
+						[ 1 ],
+						[ 1 ],
+						[ 1 ],
+						[ 1 ],
+						[ 1 ]
+					]),
+				new matrixClass([[1,1,1,1,1]]),
+				new matrixClass([
+					       [ 0, 0, 0, 0, 1],
+					       [ 0, 0, 0, 1, 0],
+					       [ 0, 0, 1, 0, 0],
+					       [ 0, 1, 0, 0, 0],
+					       [ 1, 0, 0, 0, 0]
+				       ]),
+				new matrixClass([
+					       [ 1, 0, 0, 0, 0],
+					       [ 0, 1, 0, 0, 0],
+					       [ 0, 0, 1, 0, 0],
+					       [ 0, 0, 0, 1, 0],
+					       [ 0, 0, 0, 0, 1]
+				       ]),
+				new matrixClass([
+						[1, 0, 1], 
+						[0, 0, 0], 
+						[1, 0, 1]
+					]),
+				new matrixClass([
+					       [ 1, 0, 0, 0, 1],
+					       [ 0, 0, 0, 0, 0],
+					       [ 0, 0, 0, 0, 0],
+					       [ 0, 0, 0, 0, 0],
+					       [ 1, 0, 0, 0, 1]
+				       ]),
+				new matrixClass([
+					       [ 1, 0, 1, 0, 1],
+					       [ 0, 0, 0, 0, 0],
+					       [ 1, 0, 1, 0, 1],
+					       [ 0, 0, 0, 0, 0],
+					       [ 1, 0, 1, 0, 1]
 					])
 			];
 			var currentBrush = 0
@@ -973,7 +1015,7 @@
 				var xOffset = w >> 1;
 				var yOffset = h >> 1;
 				for(x = 0; x < w; x++){
-					for(y = 0; y < w; y++){
+					for(y = 0; y < h; y++){
 						if(brushes[currentBrush].val(x, y)){
 							putPixel(px + x - xOffset, py + y - yOffset, colour);
 						}
