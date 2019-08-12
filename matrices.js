@@ -160,7 +160,7 @@ matrixClass.prototype.appendRow = function(row){
 };
 
 // an alias for the function above, as I seem to have written it twice.
-matrixClass.prototype.addRow = matrixClass.prototype.appendCol;
+matrixClass.prototype.addRow = matrixClass.prototype.appendRow;
 
 // prepend a row of values on the top end of the matrix
 matrixClass.prototype.prependRow = function(row){
